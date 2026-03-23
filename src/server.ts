@@ -1,4 +1,6 @@
 import http from "node:http";
+import fs from "node:fs";
+import path from "node:path";
 import { AllocationRequest, AllocationResponse } from "../index";
 import { classifyInput } from "./classifier";
 import { allocateTime } from "./allocator";
@@ -14,6 +16,19 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "OPTIONS") {
     res.writeHead(204);
     res.end();
+    return;
+  }
+
+  // Serve frontend
+  if (req.method === "GET" && (req.url === "/" || req.url === "/index.html")) {
+    // Works in both dev (tsx) and compiled (dist/) modes
+    let htmlPath = path.join(__dirname, "public", "index.html");
+    if (!fs.existsSync(htmlPath)) {
+      htmlPath = path.join(__dirname, "..", "src", "public", "index.html");
+    }
+    const html = fs.readFileSync(htmlPath, "utf-8");
+    res.writeHead(200, { "Content-Type": "text/html" });
+    res.end(html);
     return;
   }
 
