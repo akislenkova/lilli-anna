@@ -12,3 +12,9 @@ node_modules/
 frontend/dist/
 .DS_Store
 *.log
+node_modules/
+dist/
+frontend/node_modules/
+*.db
+*.db-wal
+*.db-shm
