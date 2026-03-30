@@ -16,7 +16,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-from backend.app.ai.knowledge_base import SYMPTOM_CONDITION_MAP
+from app.ai.knowledge_base import SYMPTOM_CONDITION_MAP
 
 
 # ---------------------------------------------------------------------------

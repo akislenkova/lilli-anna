@@ -31,22 +31,28 @@ export type VisitType = "yearly_checkup" | "specific_concern";
 export interface Appointment {
   id: string;
   patient_id: string;
-  patient_name: string;
   physician_id: string;
-  physician_name: string;
+  scheduler_id?: string;
   visit_type: VisitType;
   status: AppointmentStatus;
-  scheduled_date?: string;
-  scheduled_time?: string;
+  scheduled_start?: string;
+  scheduled_end?: string;
   ai_suggested_duration: number | null;
-  approved_duration: number | null;
-  chief_complaint?: string;
-  concerns: string[];
-  red_flags: RedFlagAlert[];
-  session_id?: string;
-  has_updates: boolean;
+  ai_confidence?: number | null;
+  ai_duration_range_min?: number | null;
+  ai_duration_range_max?: number | null;
+  scheduler_approved_duration: number | null;
+  scheduler_override_reason?: string;
+  actual_duration?: number | null;
+  initial_reason?: string;
+  is_new_patient?: boolean;
+  is_updated?: boolean;
+  version?: number;
+  red_flags?: RedFlagAlert[];
+  summary?: string;
+  feedback_submitted?: boolean;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
 }
 
 /* ──────────────────────── Conversation / Intake ──────────────────────── */
@@ -80,14 +86,16 @@ export interface ConversationMessage {
 
 export interface AIReport {
   id: string;
-  appointment_id: string;
-  probable_diagnoses: DiagnosisSuggestion[];
-  suggested_duration: TimeEstimate;
+  suggested_duration: number;
+  confidence_level?: number;
+  duration_range_min?: number;
+  duration_range_max?: number;
   red_flags: RedFlagAlert[];
-  medication_interactions: MedicationAlert[];
-  conversation_summary: string;
-  full_transcript: ConversationMessage[];
-  generated_at: string;
+  complexity_score?: number;
+  summary?: string;
+  full_report?: string;
+  probable_diagnoses?: DiagnosisSuggestion[];
+  medication_interactions?: MedicationAlert[];
 }
 
 export interface DiagnosisSuggestion {
@@ -96,29 +104,20 @@ export interface DiagnosisSuggestion {
   reasoning: string;
 }
 
-export interface TimeEstimate {
-  minutes: number;
-  confidence_low: number;
-  confidence_high: number;
-  reasoning: string;
-}
-
 export interface RedFlagAlert {
   id: string;
-  severity: "low" | "medium" | "high" | "critical";
-  description: string;
-  recommended_action: string;
+  trigger_description: string;
+  severity: "elevated" | "urgent" | "emergency";
+  session_completed: boolean;
   acknowledged: boolean;
-  acknowledged_by?: string;
-  acknowledged_at?: string;
+  created_at: string;
 }
 
 export interface MedicationAlert {
-  medication_a: string;
-  medication_b: string;
-  interaction_type: string;
-  severity: "low" | "moderate" | "severe";
+  drugs: string[];
+  severity: "critical" | "high" | "moderate";
   description: string;
+  recommendation: string;
 }
 
 /* ──────────────────────── Physician Feedback ──────────────────────── */

@@ -1,82 +1,90 @@
 import api from "./api";
-import type { ConversationSession, VisitType } from "../types";
+import type { VisitType } from "../types";
+
+interface ConversationResponse {
+  session_id: string;
+  status: string;
+  messages: { role: string; content: string; content_type: string }[];
+  questions_asked_count: number;
+}
 
 export async function startConversation(
   visitType: VisitType,
   disclaimerAccepted: boolean,
-): Promise<ConversationSession> {
-  const { data } = await api.post<{ data: ConversationSession }>(
-    "/conversations",
+): Promise<ConversationResponse> {
+  const { data } = await api.post<ConversationResponse>(
+    "/conversations/start",
     {
       visit_type: visitType,
       disclaimer_accepted: disclaimerAccepted,
     },
   );
-  return data.data;
+  return data;
 }
 
 export async function submitAnswer(
   sessionId: string,
-  answer: string,
-): Promise<ConversationSession> {
-  const { data } = await api.post<{ data: ConversationSession }>(
+  answerText: string,
+): Promise<ConversationResponse> {
+  const { data } = await api.post<ConversationResponse>(
     `/conversations/${sessionId}/answer`,
-    { answer },
+    { answer_text: answerText },
   );
-  return data.data;
+  return data;
 }
 
 export async function uploadVoiceNote(
   sessionId: string,
   audioBlob: Blob,
-): Promise<ConversationSession> {
+): Promise<{ session_id: string; preliminary_transcript: string; requires_confirmation: boolean }> {
   const formData = new FormData();
-  formData.append("audio", audioBlob, "voice_note.webm");
+  formData.append("file", audioBlob, "voice_note.webm");
 
-  const { data } = await api.post<{ data: ConversationSession }>(
-    `/conversations/${sessionId}/voice`,
+  const { data } = await api.post(
+    `/conversations/${sessionId}/voice-note`,
     formData,
     { headers: { "Content-Type": "multipart/form-data" } },
   );
-  return data.data;
+  return data;
 }
 
 export async function confirmTranscript(
   sessionId: string,
   confirmed: boolean,
-): Promise<ConversationSession> {
-  const { data } = await api.post<{ data: ConversationSession }>(
+  transcriptText: string,
+): Promise<ConversationResponse> {
+  const { data } = await api.post<ConversationResponse>(
     `/conversations/${sessionId}/confirm-transcript`,
-    { confirmed },
+    { confirmed, transcript_text: transcriptText },
   );
-  return data.data;
+  return data;
 }
 
 export async function rankConcerns(
   sessionId: string,
-  concerns: string[],
-): Promise<ConversationSession> {
-  const { data } = await api.post<{ data: ConversationSession }>(
+  concerns: { description: string; priority: number }[],
+): Promise<ConversationResponse> {
+  const { data } = await api.post<ConversationResponse>(
     `/conversations/${sessionId}/rank-concerns`,
     { concerns },
   );
-  return data.data;
+  return data;
 }
 
 export async function getConversation(
   sessionId: string,
-): Promise<ConversationSession> {
-  const { data } = await api.get<{ data: ConversationSession }>(
+): Promise<ConversationResponse> {
+  const { data } = await api.get<ConversationResponse>(
     `/conversations/${sessionId}`,
   );
-  return data.data;
+  return data;
 }
 
 export async function completeConversation(
   sessionId: string,
-): Promise<ConversationSession> {
-  const { data } = await api.post<{ data: ConversationSession }>(
+): Promise<ConversationResponse> {
+  const { data } = await api.post<ConversationResponse>(
     `/conversations/${sessionId}/complete`,
   );
-  return data.data;
+  return data;
 }

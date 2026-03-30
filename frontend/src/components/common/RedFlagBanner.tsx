@@ -3,25 +3,22 @@ import type { RedFlagAlert } from "../../types";
 interface Props {
   flags: RedFlagAlert[];
   onAcknowledge?: (flagId: string) => void;
-  /** When true the banner is compact (single line per flag). */
   compact?: boolean;
 }
 
 function severityStyles(severity: RedFlagAlert["severity"]): string {
   switch (severity) {
-    case "critical":
+    case "emergency":
       return "border-red-600 bg-red-50 text-red-900";
-    case "high":
+    case "urgent":
       return "border-red-500 bg-red-50 text-red-800";
-    case "medium":
+    case "elevated":
       return "border-amber-500 bg-amber-50 text-amber-900";
-    case "low":
-      return "border-yellow-400 bg-yellow-50 text-yellow-900";
   }
 }
 
 function severityIcon(severity: RedFlagAlert["severity"]): JSX.Element {
-  if (severity === "critical" || severity === "high") {
+  if (severity === "emergency" || severity === "urgent") {
     return (
       <svg className="h-5 w-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
@@ -35,7 +32,7 @@ function severityIcon(severity: RedFlagAlert["severity"]): JSX.Element {
   );
 }
 
-export default function RedFlagBanner({ flags, onAcknowledge, compact }: Props) {
+export function RedFlagBanner({ flags, onAcknowledge, compact }: Props) {
   const unacknowledged = flags.filter((f) => !f.acknowledged);
 
   if (unacknowledged.length === 0) return null;
@@ -59,13 +56,8 @@ export default function RedFlagBanner({ flags, onAcknowledge, compact }: Props) 
               )}
             </div>
             <p className={`mt-1 text-sm ${compact ? "line-clamp-1" : ""}`}>
-              {flag.description}
+              {flag.trigger_description}
             </p>
-            {!compact && flag.recommended_action && (
-              <p className="mt-1 text-xs opacity-80">
-                Recommended: {flag.recommended_action}
-              </p>
-            )}
           </div>
           {onAcknowledge && (
             <button

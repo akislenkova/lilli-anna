@@ -1,32 +1,39 @@
 import api from "./api";
-import type { PhysicianFeedback, TimeAccuracy } from "../types";
+import type { TimeAccuracy } from "../types";
 
 export interface FeedbackPayload {
   appointment_id: string;
   time_accuracy: TimeAccuracy;
-  actual_duration?: number;
-  reason?: string;
-  additional_notes?: string;
+  actual_vs_suggested_delta: number;
+  reason_text?: string;
+}
+
+interface FeedbackResponse {
+  id: string;
+  appointment_id: string;
+  time_accuracy: string;
+  actual_vs_suggested_delta: number;
+  created_at: string;
 }
 
 export async function submitFeedback(
   payload: FeedbackPayload,
-): Promise<PhysicianFeedback> {
-  const { data } = await api.post<{ data: PhysicianFeedback }>(
+): Promise<FeedbackResponse> {
+  const { data } = await api.post<FeedbackResponse>(
     "/feedback",
     payload,
   );
-  return data.data;
+  return data;
 }
 
 export async function getFeedback(
   appointmentId: string,
-): Promise<PhysicianFeedback | null> {
+): Promise<FeedbackResponse | null> {
   try {
-    const { data } = await api.get<{ data: PhysicianFeedback }>(
-      `/feedback/${appointmentId}`,
+    const { data } = await api.get<FeedbackResponse>(
+      `/feedback/appointment/${appointmentId}`,
     );
-    return data.data;
+    return data;
   } catch {
     return null;
   }

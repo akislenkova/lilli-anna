@@ -22,7 +22,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from backend.app.ai.knowledge_base import (
+from app.ai.knowledge_base import (
     CONDITION_QUESTIONS,
     PHQ2_QUESTIONS,
     RED_FLAG_PATTERNS,

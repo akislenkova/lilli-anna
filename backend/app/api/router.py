@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 
-from backend.app.api.routes import (
+from app.api.routes import (
     admin,
     ai_reports,
     appointments,
@@ -14,14 +14,12 @@ from backend.app.api.routes import (
 
 api_router = APIRouter()
 
-api_router.include_router(auth.router, prefix="/auth", tags=["Authentication"])
-api_router.include_router(patients.router, prefix="/patients", tags=["Patients"])
-api_router.include_router(
-    conversations.router, prefix="/conversations", tags=["Conversations"]
-)
-api_router.include_router(
-    appointments.router, prefix="/appointments", tags=["Appointments"]
-)
-api_router.include_router(ai_reports.router, prefix="/reports", tags=["AI Reports"])
-api_router.include_router(feedback.router, prefix="/feedback", tags=["Feedback"])
+# Each route module defines its own prefix (e.g. /auth, /appointments, etc.)
+# so we include them without adding additional prefixes here.
+api_router.include_router(auth.router)
+api_router.include_router(patients.router)
+api_router.include_router(conversations.router)
+api_router.include_router(appointments.router)
+api_router.include_router(ai_reports.router)
+api_router.include_router(feedback.router)
 api_router.include_router(admin.router)
