@@ -18,12 +18,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from backend.app.ai.knowledge_base import (
+from app.ai.knowledge_base import (
     MEDICATION_INTERACTION_FLAGS,
     SYMPTOM_CONDITION_MAP,
 )
-from backend.app.ai.question_engine import QuestionEngine, RedFlag
-from backend.app.ai.time_estimator import EstimationContext, TimeEstimator
+from app.ai.question_engine import QuestionEngine, RedFlag
+from app.ai.time_estimator import EstimationContext, TimeEstimator
 
 
 # ---------------------------------------------------------------------------
@@ -479,7 +479,7 @@ class ReportGenerator:
         Uses the same scoring logic as QuestionEngine._rank_conditions but
         normalizes scores to produce a pseudo-probability.
         """
-        from backend.app.ai.knowledge_base import CONDITION_QUESTIONS
+        from app.ai.knowledge_base import CONDITION_QUESTIONS
 
         raw_scores: dict[str, float] = {}
         condition_symptoms: dict[str, list[str]] = {}

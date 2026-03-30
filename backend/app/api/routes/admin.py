@@ -7,15 +7,15 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.core.database import get_db
-from backend.app.core.security import Role, get_current_user, require_role
-from backend.app.models.audit import AuditAction, AuditLog
-from backend.app.models.coverage import PhysicianCoverage
-from backend.app.models.proxy import ProxyAuthorization, ProxyRelationship
-from backend.app.models.user import User
-from backend.app.services.audit_service import AuditService
-from backend.app.services.coverage_service import CoverageService
-from backend.app.services.proxy_service import ProxyService
+from app.core.database import get_db
+from app.core.security import Role, get_current_user, require_role
+from app.models.audit import AuditAction, AuditLog
+from app.models.coverage import PhysicianCoverage
+from app.models.proxy import ProxyAuthorization, ProxyRelationship
+from app.models.user import User
+from app.services.audit_service import AuditService
+from app.services.coverage_service import CoverageService
+from app.services.proxy_service import ProxyService
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 audit_service = AuditService()

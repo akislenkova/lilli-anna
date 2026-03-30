@@ -1,78 +1,49 @@
 import api from "./api";
-import type {
-  Appointment,
-  AppointmentFilters,
-  CalendarView,
-  CalendarViewType,
-  PaginatedResponse,
-  PriorityItem,
-  SchedulingConflict,
-} from "../types";
+import type { Appointment } from "../types";
+
+interface AppointmentListResponse {
+  items: Appointment[];
+  total: number;
+  page: number;
+  per_page: number;
+}
 
 export async function listAppointments(
-  filters?: AppointmentFilters,
-): Promise<PaginatedResponse<Appointment>> {
-  const { data } = await api.get<PaginatedResponse<Appointment>>(
+  filters?: Record<string, unknown>,
+): Promise<Appointment[]> {
+  const { data } = await api.get<AppointmentListResponse>(
     "/appointments",
     { params: filters },
   );
-  return data;
+  return data.items;
 }
 
 export async function getAppointment(id: string): Promise<Appointment> {
-  const { data } = await api.get<{ data: Appointment }>(
-    `/appointments/${id}`,
-  );
-  return data.data;
+  const { data } = await api.get<Appointment>(`/appointments/${id}`);
+  return data;
 }
 
 export async function createAppointment(
   payload: Partial<Appointment>,
 ): Promise<Appointment> {
-  const { data } = await api.post<{ data: Appointment }>(
-    "/appointments",
-    payload,
-  );
-  return data.data;
+  const { data } = await api.post<Appointment>("/appointments", payload);
+  return data;
 }
 
 export async function updateAppointment(
   id: string,
   payload: Partial<Appointment>,
 ): Promise<Appointment> {
-  const { data } = await api.patch<{ data: Appointment }>(
+  const { data } = await api.put<Appointment>(
     `/appointments/${id}`,
     payload,
   );
-  return data.data;
+  return data;
 }
 
-export async function cancelAppointment(id: string): Promise<void> {
-  await api.post(`/appointments/${id}/cancel`);
-}
-
-export async function getCalendar(
-  viewType: CalendarViewType,
-  date?: string,
-): Promise<CalendarView> {
-  const { data } = await api.get<{ data: CalendarView }>("/calendar", {
-    params: { view: viewType, date },
-  });
-  return data.data;
-}
-
-export async function getConflicts(): Promise<SchedulingConflict[]> {
-  const { data } = await api.get<{ data: SchedulingConflict[] }>(
-    "/appointments/conflicts",
-  );
-  return data.data;
-}
-
-export async function getPriorityRanking(): Promise<PriorityItem[]> {
-  const { data } = await api.get<{ data: PriorityItem[] }>(
-    "/appointments/priority",
-  );
-  return data.data;
+export async function cancelAppointment(id: string): Promise<Appointment> {
+  const { data } = await api.put<Appointment>(`/appointments/${id}/cancel`);
+  return data;
 }
 
 export async function approveDuration(
@@ -80,9 +51,13 @@ export async function approveDuration(
   duration: number,
   reason?: string,
 ): Promise<Appointment> {
-  const { data } = await api.post<{ data: Appointment }>(
-    `/appointments/${appointmentId}/approve-duration`,
-    { duration, reason },
+  const { data } = await api.put<Appointment>(
+    `/appointments/${appointmentId}`,
+    {
+      scheduler_approved_duration: duration,
+      scheduler_override_reason: reason,
+      status: "scheduled",
+    },
   );
-  return data.data;
+  return data;
 }

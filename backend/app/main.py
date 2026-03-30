@@ -5,11 +5,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.app.api.router import api_router
-from backend.app.core.config import settings
-from backend.app.core.database import init_db
-from backend.app.middleware.audit_middleware import AuditMiddleware
-from backend.app.middleware.session_middleware import SessionSecurityMiddleware
+from app.api.router import api_router
+from app.core.config import settings
+from app.core.database import init_db
+from app.middleware.audit_middleware import AuditMiddleware
+from app.middleware.session_middleware import SessionMiddleware
 
 
 @asynccontextmanager
@@ -35,7 +35,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.add_middleware(AuditMiddleware)
-app.add_middleware(SessionSecurityMiddleware)
+app.add_middleware(SessionMiddleware)
 
 app.include_router(api_router, prefix="/api")
 
