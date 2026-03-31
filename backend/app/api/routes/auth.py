@@ -1,5 +1,9 @@
 """Authentication routes: login, register, logout, current-user info."""
 
+from __future__ import annotations
+
+from typing import Optional, Union
+
 import logging
 import uuid
 from datetime import datetime, timezone
@@ -36,10 +40,10 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 async def _audit_log(
     db: AsyncSession,
     *,
-    user_id: uuid.UUID | str,
+    user_id: Union[str, uuid.UUID],
     action: str,
     resource_type: str,
-    resource_id: uuid.UUID | str,
+    resource_id: Union[str, uuid.UUID],
     success: bool,
 ) -> None:
     """Write an audit log entry.  Uses raw execute to avoid circular model imports."""
@@ -123,7 +127,7 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
 async def register(
     body: UserCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: dict | None = None,
+    current_user: Optional[dict] = None,
 ):
     """Create a new user account.
 

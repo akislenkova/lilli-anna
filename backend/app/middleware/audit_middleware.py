@@ -60,7 +60,7 @@ class AuditMiddleware(BaseHTTPMiddleware):
                     user_id=user_id or uuid.UUID(int=0),
                     patient_id=uuid.UUID(int=0),  # not known at middleware level
                     resource_type="http",
-                    resource_id=uuid.UUID(int=0),
+                    resource_id=str(uuid.UUID(int=0)),
                     action=f"{request.method} {request.url.path}",
                     success=success,
                     details={

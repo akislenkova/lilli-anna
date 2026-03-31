@@ -11,52 +11,13 @@ import uuid
 from datetime import date, datetime, timezone
 from typing import Optional
 
-from sqlalchemy import and_, select, update
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.base import Base, TimestampMixin
+from app.models.coverage import PhysicianCoverage as Coverage
 from app.models.user import User
 from app.services.audit_service import AuditService
 from app.services.notification_service import NotificationService
-
-# ---------------------------------------------------------------------------
-# Coverage model (defined here since no standalone models/coverage.py exists)
-# ---------------------------------------------------------------------------
-from sqlalchemy import Boolean, Column, Date, DateTime, ForeignKey, String, func
-from sqlalchemy.dialects.postgresql import UUID as PGUUID
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-
-
-class Coverage(TimestampMixin, Base):
-    __tablename__ = "coverages"
-
-    covering_physician_id: Mapped[uuid.UUID] = mapped_column(
-        PGUUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
-    )
-    absent_physician_id: Mapped[uuid.UUID] = mapped_column(
-        PGUUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
-    )
-    start_date: Mapped[date] = mapped_column(Date, nullable=False)
-    end_date: Mapped[date] = mapped_column(Date, nullable=False)
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    assigned_by: Mapped[uuid.UUID] = mapped_column(
-        PGUUID(as_uuid=True), ForeignKey("users.id"), nullable=False
-    )
-    revoked_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-
-    # Relationships
-    covering_physician: Mapped["User"] = relationship(
-        "User", foreign_keys=[covering_physician_id]
-    )
-    absent_physician: Mapped["User"] = relationship(
-        "User", foreign_keys=[absent_physician_id]
-    )
-    assigned_by_user: Mapped["User"] = relationship(
-        "User", foreign_keys=[assigned_by]
-    )
-
 
 logger = logging.getLogger(__name__)
 

@@ -1,5 +1,9 @@
 """Admin routes for coverage, proxy management, and audit logs."""
 
+from __future__ import annotations
+
+from typing import Optional
+
 from datetime import date
 from uuid import UUID
 
@@ -14,13 +18,8 @@ from app.models.coverage import PhysicianCoverage
 from app.models.proxy import ProxyAuthorization, ProxyRelationship
 from app.models.user import User
 from app.services.audit_service import AuditService
-from app.services.coverage_service import CoverageService
-from app.services.proxy_service import ProxyService
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
-audit_service = AuditService()
-coverage_service = CoverageService()
-proxy_service = ProxyService()
 
 
 # ── Coverage ──────────────────────────────────────────────────────────
@@ -57,9 +56,9 @@ async def create_coverage(
     await db.commit()
     await db.refresh(coverage)
 
-    await audit_service.log_modification(
-        db, current_user.id, "coverage", str(coverage.id),
-        {"action": "created", "covering": str(covering_physician_id), "absent": str(absent_physician_id)},
+    await AuditService(db).log_modification(
+        user_id=current_user.id, resource_type="coverage", resource_id=coverage.id,
+        changes={"action": "created", "covering": str(covering_physician_id), "absent": str(absent_physician_id)},
         ip_address="",
     )
     return {"id": coverage.id, "status": "created"}
@@ -77,10 +76,11 @@ async def revoke_coverage(
     if not coverage:
         raise HTTPException(404, "Coverage not found")
 
-    await coverage_service.revoke_coverage(db, coverage)
-    await audit_service.log_modification(
-        db, current_user.id, "coverage", str(coverage_id),
-        {"action": "revoked"}, ip_address="",
+    coverage.is_active = False
+    await db.commit()
+    await AuditService(db).log_modification(
+        user_id=current_user.id, resource_type="coverage", resource_id=coverage_id,
+        changes={"action": "revoked"}, ip_address="",
     )
     return {"status": "revoked"}
 
@@ -114,7 +114,7 @@ async def create_proxy(
     proxy_user_id: UUID,
     relationship: str,
     state_code: str,
-    minor_age_of_consent: int | None = None,
+    minor_age_of_consent: Optional[int] = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -132,9 +132,9 @@ async def create_proxy(
     await db.commit()
     await db.refresh(proxy)
 
-    await audit_service.log_modification(
-        db, current_user.id, "proxy", str(proxy.id),
-        {"action": "created", "patient": str(patient_id), "proxy_user": str(proxy_user_id)},
+    await AuditService(db).log_modification(
+        user_id=current_user.id, resource_type="proxy", resource_id=proxy.id,
+        changes={"action": "created", "patient": str(patient_id), "proxy_user": str(proxy_user_id)},
         ip_address="",
     )
     return {"id": proxy.id, "status": "created"}
@@ -178,9 +178,9 @@ async def verify_proxy(
     proxy.verified_by = current_user.id
     await db.commit()
 
-    await audit_service.log_modification(
-        db, current_user.id, "proxy", str(proxy_id),
-        {"action": "verified"}, ip_address="",
+    await AuditService(db).log_modification(
+        user_id=current_user.id, resource_type="proxy", resource_id=proxy_id,
+        changes={"action": "verified"}, ip_address="",
     )
     return {"status": "verified"}
 
@@ -190,11 +190,11 @@ async def verify_proxy(
 
 @router.get("/audit-logs", dependencies=[Depends(require_role(Role.ADMIN))])
 async def query_audit_logs(
-    user_id: UUID | None = None,
-    patient_id: UUID | None = None,
-    action: str | None = None,
-    start_date: date | None = None,
-    end_date: date | None = None,
+    user_id: Optional[UUID] = None,
+    patient_id: Optional[UUID] = None,
+    action: Optional[str] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
@@ -245,4 +245,4 @@ async def scheduler_override_report(db: AsyncSession = Depends(get_db)):
     Surface patterns where schedulers consistently override AI duration downward
     and post-visit feedback indicates rushed appointments (spec 6.3).
     """
-    return await audit_service.get_override_patterns(db)
+    return await AuditService(db).get_override_patterns()

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { DisclaimerModal } from "../components/common/DisclaimerModal";
-import { IntakeFlow } from "../components/patient/IntakeFlow";
+import DisclaimerModal from "../components/common/DisclaimerModal";
+import IntakeFlow from "../components/patient/IntakeFlow";
 
 export function IntakePage() {
   const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
@@ -8,6 +8,7 @@ export function IntakePage() {
   if (!disclaimerAccepted) {
     return (
       <DisclaimerModal
+        open={true}
         onAccept={() => setDisclaimerAccepted(true)}
         onDecline={() => window.history.back()}
       />

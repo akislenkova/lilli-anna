@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import Boolean, Date, DateTime, Enum, ForeignKey, Index, Integer, String, func
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship as sa_relationship
 
 from app.models.base import Base, TimestampMixin
 
@@ -48,10 +48,10 @@ class ProxyAuthorization(TimestampMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     # Relationships
-    patient: Mapped["User"] = relationship("User", foreign_keys=[patient_id])
-    proxy_user: Mapped["User"] = relationship("User", foreign_keys=[proxy_user_id])
-    verified_by_user: Mapped[Optional["User"]] = relationship(
-        "User", foreign_keys=[verified_by]
+    patient: Mapped["User"] = sa_relationship("User", foreign_keys="[ProxyAuthorization.patient_id]")
+    proxy_user: Mapped["User"] = sa_relationship("User", foreign_keys="[ProxyAuthorization.proxy_user_id]")
+    verified_by_user: Mapped[Optional["User"]] = sa_relationship(
+        "User", foreign_keys="[ProxyAuthorization.verified_by]"
     )
 
     __table_args__ = (
