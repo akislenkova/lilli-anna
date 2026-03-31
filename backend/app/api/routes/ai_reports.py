@@ -1,5 +1,7 @@
 """AI report and red-flag alert routes with role-filtered views."""
 
+from typing import Optional, Union
+
 import logging
 import uuid
 from datetime import datetime, timezone
@@ -28,10 +30,10 @@ router = APIRouter(prefix="/reports", tags=["ai_reports"])
 async def _audit_log(
     db: AsyncSession,
     *,
-    user_id: str | uuid.UUID,
+    user_id: Union[str, uuid.UUID],
     action: str,
     resource_type: str,
-    resource_id: str | uuid.UUID,
+    resource_id: Union[str, uuid.UUID],
     success: bool,
 ) -> None:
     await db.execute(

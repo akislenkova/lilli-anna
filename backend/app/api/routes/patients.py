@@ -1,5 +1,9 @@
 """Patient-facing routes: profile, appointments, medications, records."""
 
+from __future__ import annotations
+
+from typing import Optional, Union
+
 import json
 import logging
 import uuid
@@ -39,10 +43,10 @@ router = APIRouter(prefix="/patients/me", tags=["patients"])
 async def _audit_log(
     db: AsyncSession,
     *,
-    user_id: str | uuid.UUID,
+    user_id: Union[str, uuid.UUID],
     action: str,
     resource_type: str,
-    resource_id: str | uuid.UUID,
+    resource_id: Union[str, uuid.UUID],
     success: bool,
 ) -> None:
     """Write an audit log entry."""
@@ -79,7 +83,7 @@ async def _get_patient_profile(
 
 
 async def _verify_patient_or_proxy(
-    db: AsyncSession, current_user: dict, target_patient_id: str | None = None,
+    db: AsyncSession, current_user: dict, target_patient_id: Optional[str] = None,
 ) -> str:
     """Return the effective patient_id after verifying access.
 

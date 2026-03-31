@@ -1,5 +1,7 @@
 """Conversation / AI-intake session routes."""
 
+from typing import Optional, Union
+
 import logging
 import uuid
 from datetime import datetime, timezone
@@ -41,10 +43,10 @@ router = APIRouter(prefix="/conversations", tags=["conversations"])
 async def _audit_log(
     db: AsyncSession,
     *,
-    user_id: str | uuid.UUID,
+    user_id: Union[str, uuid.UUID],
     action: str,
     resource_type: str,
-    resource_id: str | uuid.UUID,
+    resource_id: Union[str, uuid.UUID],
     success: bool,
 ) -> None:
     await db.execute(

@@ -1,5 +1,9 @@
 """Physician feedback and scheduler override pattern routes."""
 
+from __future__ import annotations
+
+from typing import Optional, Union
+
 import logging
 import uuid
 from datetime import datetime, timezone
@@ -28,10 +32,10 @@ router = APIRouter(prefix="/feedback", tags=["feedback"])
 async def _audit_log(
     db: AsyncSession,
     *,
-    user_id: str | uuid.UUID,
+    user_id: Union[str, uuid.UUID],
     action: str,
     resource_type: str,
-    resource_id: str | uuid.UUID,
+    resource_id: Union[str, uuid.UUID],
     success: bool,
 ) -> None:
     await db.execute(
@@ -248,7 +252,7 @@ async def get_feedback(
 
 @router.get("/override-patterns", response_model=list[SchedulerOverrideResponse])
 async def get_override_patterns(
-    scheduler_id: uuid.UUID | None = None,
+    scheduler_id: Optional[uuid.UUID] = None,
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
     current_user: dict = Depends(require_role(Role.ADMIN)),

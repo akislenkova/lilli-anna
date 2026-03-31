@@ -1,5 +1,9 @@
 """Appointment management routes with role-based filtering."""
 
+from __future__ import annotations
+
+from typing import Optional, Union
+
 import logging
 import uuid
 from datetime import date, datetime, timedelta, timezone
@@ -44,10 +48,10 @@ router = APIRouter(prefix="/appointments", tags=["appointments"])
 async def _audit_log(
     db: AsyncSession,
     *,
-    user_id: str | uuid.UUID,
+    user_id: Union[str, uuid.UUID],
     action: str,
     resource_type: str,
-    resource_id: str | uuid.UUID,
+    resource_id: Union[str, uuid.UUID],
     success: bool,
 ) -> None:
     await db.execute(
@@ -122,10 +126,10 @@ def _role_filtered_view(appointment: Appointment, role: str) -> dict:
 async def list_appointments(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
-    status_filter: str | None = Query(None, alias="status"),
-    physician_id: uuid.UUID | None = None,
-    date_from: datetime | None = None,
-    date_to: datetime | None = None,
+    status_filter: Optional[str] = Query(None, alias="status"),
+    physician_id: Optional[uuid.UUID] = None,
+    date_from: Optional[datetime] = None,
+    date_to: Optional[datetime] = None,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> AppointmentListResponse:
@@ -218,8 +222,8 @@ async def list_appointments(
 @router.get("/calendar")
 async def calendar_view(
     view: str = Query("week", pattern="^(today|week|month)$"),
-    physician_id: uuid.UUID | None = None,
-    reference_date: date | None = None,
+    physician_id: Optional[uuid.UUID] = None,
+    reference_date: Optional[date] = None,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[dict]:
@@ -301,8 +305,8 @@ async def calendar_view(
 @router.get("/conflicts", response_model=list[SchedulingConflict])
 async def get_conflicts(
     physician_id: uuid.UUID,
-    date_from: datetime | None = None,
-    date_to: datetime | None = None,
+    date_from: Optional[datetime] = None,
+    date_to: Optional[datetime] = None,
     current_user: dict = Depends(require_role(Role.SCHEDULER, Role.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ) -> list[SchedulingConflict]:
@@ -370,7 +374,7 @@ async def get_conflicts(
 
 @router.get("/priority-ranking", response_model=PriorityRanking)
 async def get_priority_ranking(
-    physician_id: uuid.UUID | None = None,
+    physician_id: Optional[uuid.UUID] = None,
     current_user: dict = Depends(require_role(Role.SCHEDULER, Role.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ) -> PriorityRanking:

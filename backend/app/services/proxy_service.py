@@ -11,53 +11,14 @@ import uuid
 from datetime import date, datetime, timezone
 from typing import Optional
 
-from sqlalchemy import Boolean, Column, Date, DateTime, ForeignKey, Integer, String, select
-from sqlalchemy.dialects.postgresql import UUID as PGUUID
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base, TimestampMixin
+from app.models.proxy import ProxyAuthorization
 from app.models.user import User
 from app.services.audit_service import AuditService
 
 logger = logging.getLogger(__name__)
-
-
-# ---------------------------------------------------------------------------
-# Proxy authorization model
-# ---------------------------------------------------------------------------
-class ProxyAuthorization(TimestampMixin, Base):
-    __tablename__ = "proxy_authorizations"
-
-    patient_id: Mapped[uuid.UUID] = mapped_column(
-        PGUUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
-    )
-    proxy_user_id: Mapped[uuid.UUID] = mapped_column(
-        PGUUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
-    )
-    relationship_type: Mapped[str] = mapped_column(String(100), nullable=False)
-    consent_document_path: Mapped[str] = mapped_column(String(500), nullable=False)
-    state_code: Mapped[str] = mapped_column(String(2), nullable=False)
-    age_of_consent: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    verified_by: Mapped[Optional[uuid.UUID]] = mapped_column(
-        PGUUID(as_uuid=True), ForeignKey("users.id"), nullable=True
-    )
-    verified_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    deactivated_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-
-    # Relationships
-    patient: Mapped["User"] = relationship("User", foreign_keys=[patient_id])
-    proxy_user: Mapped["User"] = relationship("User", foreign_keys=[proxy_user_id])
-    verified_by_user: Mapped[Optional["User"]] = relationship(
-        "User", foreign_keys=[verified_by]
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -100,10 +61,10 @@ class ProxyService:
         proxy = ProxyAuthorization(
             patient_id=patient_id,
             proxy_user_id=proxy_user_id,
-            relationship_type=relationship,
+            relationship=relationship,
             consent_document_path=consent_path,
             state_code=state_code.upper(),
-            age_of_consent=age_of_consent,
+            minor_age_of_consent=age_of_consent,
             is_active=True,
             verified=False,
         )

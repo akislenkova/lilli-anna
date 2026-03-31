@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import type { ConversationMessage, ConversationSession, VisitType } from "../../types";
 import DisclaimerModal from "../common/DisclaimerModal";
-import RedFlagBanner from "../common/RedFlagBanner";
+import { RedFlagBanner } from "../common/RedFlagBanner";
 import * as conversationService from "../../services/conversations";
 
 type Step =
