@@ -35,9 +35,14 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      accessToken = null;
-      if (!window.location.pathname.startsWith("/login")) {
-        window.location.href = "/login";
+      // Only redirect to login if the failed request was an auth check,
+      // not a regular data-fetching call that happened to fail.
+      const url = error.config?.url ?? "";
+      if (url.includes("/auth/me")) {
+        accessToken = null;
+        if (!window.location.pathname.startsWith("/login")) {
+          window.location.href = "/login";
+        }
       }
     }
 

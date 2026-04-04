@@ -9,23 +9,27 @@ export function PatientDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    listAppointments({}).then((data) => {
-      const now = new Date();
-      setUpcoming(
-        data.filter(
-          (a) =>
-            a.scheduled_start && new Date(a.scheduled_start) >= now && a.status !== "cancelled"
-        )
-      );
-      setPast(
-        data.filter(
-          (a) =>
-            a.status === "completed" ||
-            (a.scheduled_start && new Date(a.scheduled_start) < now)
-        )
-      );
-      setLoading(false);
-    });
+    listAppointments({})
+      .then((data) => {
+        const now = new Date();
+        setUpcoming(
+          data.filter(
+            (a) =>
+              a.scheduled_start && new Date(a.scheduled_start) >= now && a.status !== "cancelled"
+          )
+        );
+        setPast(
+          data.filter(
+            (a) =>
+              a.status === "completed" ||
+              (a.scheduled_start && new Date(a.scheduled_start) < now)
+          )
+        );
+      })
+      .catch(() => {
+        // API may not have appointments yet
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   if (loading) {
