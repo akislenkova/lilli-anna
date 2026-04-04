@@ -3,6 +3,7 @@
 import logging
 import uuid
 from datetime import datetime, timezone
+from typing import Union
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 from sqlalchemy import select, text
@@ -41,10 +42,10 @@ router = APIRouter(prefix="/conversations", tags=["conversations"])
 async def _audit_log(
     db: AsyncSession,
     *,
-    user_id: str | uuid.UUID,
+    user_id: Union[str, uuid.UUID],
     action: str,
     resource_type: str,
-    resource_id: str | uuid.UUID,
+    resource_id: Union[str, uuid.UUID],
     success: bool,
 ) -> None:
     await db.execute(
@@ -118,14 +119,17 @@ async def _get_session_with_access(
             },
         )
         if covering.first() is not None:
-            await _audit_log(
-                db,
-                user_id=user_id,
-                action="covering_physician_access_conversation",
-                resource_type="conversation_session",
-                resource_id=session_id,
-                success=True,
-            )
+            try:
+                await _audit_log(
+                    db,
+                    user_id=user_id,
+                    action="data_access",
+                    resource_type="conversation_session",
+                    resource_id=session_id,
+                    success=True,
+                )
+            except Exception:
+                logger.warning("Failed to write audit log for covering physician access")
             return session
 
     # Nurse sees sessions for their assigned physician's patients
@@ -146,14 +150,17 @@ async def _get_session_with_access(
             if nurse_assignment.first() is not None:
                 return session
 
-    await _audit_log(
-        db,
-        user_id=user_id,
-        action="conversation_access_denied",
-        resource_type="conversation_session",
-        resource_id=session_id,
-        success=False,
-    )
+    try:
+        await _audit_log(
+            db,
+            user_id=user_id,
+            action="data_access",
+            resource_type="conversation_session",
+            resource_id=session_id,
+            success=False,
+        )
+    except Exception:
+        logger.warning("Failed to write audit log for conversation access denied")
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
         detail="You do not have access to this conversation session",
@@ -184,15 +191,14 @@ def _session_to_response(session: ConversationSession) -> ConversationResponse:
 
 @router.post("/start", response_model=ConversationResponse, status_code=status.HTTP_201_CREATED)
 async def start_conversation(
-    body: ConversationStart,
+    payload: ConversationStart,
     current_user: dict = Depends(require_role(Role.PATIENT)),
     db: AsyncSession = Depends(get_db),
 ):
     """Start a new AI intake conversation session.
 
-    The patient must accept the disclaimer before proceeding.  A pending
-    appointment for the patient is required; if none exists, the request
-    is rejected.
+    The patient must accept the disclaimer before proceeding.  If no
+    pending-intake appointment exists, one is auto-created.
     """
     patient_id = current_user["user_id"]
 
@@ -202,7 +208,7 @@ async def start_conversation(
         .where(
             Appointment.patient_id == patient_id,
             Appointment.status == "pending_intake",
-            Appointment.visit_type == body.visit_type,
+            Appointment.visit_type == payload.visit_type,
         )
         .order_by(Appointment.created_at.desc())
         .limit(1)
@@ -210,10 +216,15 @@ async def start_conversation(
     appointment = result.scalar_one_or_none()
 
     if appointment is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No pending intake appointment found for this visit type",
+        # Auto-create a pending intake appointment for the patient
+        appointment = Appointment(
+            patient_id=patient_id,
+            visit_type=payload.visit_type,
+            status="pending_intake",
+            initial_reason="",
         )
+        db.add(appointment)
+        await db.flush()
 
     # Check for an existing active session on this appointment
     existing = await db.execute(
@@ -232,7 +243,7 @@ async def start_conversation(
     session = ConversationSession(
         appointment_id=appointment.id,
         patient_id=patient_id,
-        visit_type=body.visit_type,
+        visit_type=payload.visit_type,
         status=SessionStatus.IN_PROGRESS,
         disclaimer_accepted=True,
         disclaimer_accepted_at=now,
@@ -253,15 +264,19 @@ async def start_conversation(
     db.add(opening_msg)
     await db.flush()
 
-    await _audit_log(
-        db,
-        user_id=patient_id,
-        action="start_conversation",
-        resource_type="conversation_session",
-        resource_id=session.id,
-        success=True,
-    )
+    try:
+        await _audit_log(
+            db,
+            user_id=patient_id,
+            action="data_modify",
+            resource_type="conversation_session",
+            resource_id=session.id,
+            success=True,
+        )
+    except Exception:
+        logger.warning("Failed to write audit log for start_conversation")
 
+    await db.commit()
     await db.refresh(session, ["messages"])
     return _session_to_response(session)
 
@@ -273,7 +288,7 @@ async def start_conversation(
 @router.post("/{session_id}/answer", response_model=ConversationResponse)
 async def submit_answer(
     session_id: uuid.UUID,
-    body: PatientAnswer,
+    payload: PatientAnswer,
     current_user: dict = Depends(require_role(Role.PATIENT)),
     db: AsyncSession = Depends(get_db),
 ):
@@ -303,7 +318,7 @@ async def submit_answer(
         session_id=session.id,
         sequence_number=next_seq,
         role=MessageRole.PATIENT,
-        content=encrypt_phi(body.answer_text),
+        content=encrypt_phi(payload.answer_text),
         content_type=ContentType.TEXT,
     )
     db.add(patient_msg)
@@ -326,15 +341,19 @@ async def submit_answer(
     db.add(ai_msg)
     await db.flush()
 
-    await _audit_log(
-        db,
-        user_id=current_user["user_id"],
-        action="submit_answer",
-        resource_type="conversation_session",
-        resource_id=session_id,
-        success=True,
-    )
+    try:
+        await _audit_log(
+            db,
+            user_id=current_user["user_id"],
+            action="data_modify",
+            resource_type="conversation_session",
+            resource_id=session_id,
+            success=True,
+        )
+    except Exception:
+        logger.warning("Failed to write audit log for submit_answer")
 
+    await db.commit()
     await db.refresh(session, ["messages"])
     return _session_to_response(session)
 
@@ -386,14 +405,18 @@ async def upload_voice_note(
         "In production, this would come from the transcription service."
     )
 
-    await _audit_log(
-        db,
-        user_id=current_user["user_id"],
-        action="upload_voice_note",
-        resource_type="conversation_session",
-        resource_id=session_id,
-        success=True,
-    )
+    try:
+        await _audit_log(
+            db,
+            user_id=current_user["user_id"],
+            action="data_modify",
+            resource_type="conversation_session",
+            resource_id=session_id,
+            success=True,
+        )
+    except Exception:
+        logger.warning("Failed to write audit log for upload_voice_note")
+    await db.commit()
 
     return {
         "session_id": str(session_id),
@@ -409,7 +432,7 @@ async def upload_voice_note(
 @router.post("/{session_id}/confirm-transcript", response_model=ConversationResponse)
 async def confirm_transcript(
     session_id: uuid.UUID,
-    body: TranscriptConfirmation,
+    payload: TranscriptConfirmation,
     current_user: dict = Depends(require_role(Role.PATIENT)),
     db: AsyncSession = Depends(get_db),
 ):
@@ -426,7 +449,7 @@ async def confirm_transcript(
             detail="Conversation is not in progress",
         )
 
-    if not body.confirmed:
+    if not payload.confirmed:
         return _session_to_response(session)
 
     next_seq = len(session.messages)
@@ -434,7 +457,7 @@ async def confirm_transcript(
         session_id=session.id,
         sequence_number=next_seq,
         role=MessageRole.PATIENT,
-        content=encrypt_phi(body.transcript_text),
+        content=encrypt_phi(payload.transcript_text),
         content_type=ContentType.VOICE_TRANSCRIPT,
         voice_note_retained=False,
     )
@@ -443,15 +466,19 @@ async def confirm_transcript(
     session.last_activity_at = datetime.now(timezone.utc)
     await db.flush()
 
-    await _audit_log(
-        db,
-        user_id=current_user["user_id"],
-        action="confirm_transcript",
-        resource_type="conversation_session",
-        resource_id=session_id,
-        success=True,
-    )
+    try:
+        await _audit_log(
+            db,
+            user_id=current_user["user_id"],
+            action="data_modify",
+            resource_type="conversation_session",
+            resource_id=session_id,
+            success=True,
+        )
+    except Exception:
+        logger.warning("Failed to write audit log for confirm_transcript")
 
+    await db.commit()
     await db.refresh(session, ["messages"])
     return _session_to_response(session)
 
@@ -463,7 +490,7 @@ async def confirm_transcript(
 @router.post("/{session_id}/rank-concerns", response_model=ConversationResponse)
 async def rank_concerns(
     session_id: uuid.UUID,
-    body: ConcernRanking,
+    payload: ConcernRanking,
     current_user: dict = Depends(require_role(Role.PATIENT)),
     db: AsyncSession = Depends(get_db),
 ):
@@ -480,19 +507,23 @@ async def rank_concerns(
             detail="Conversation is not in progress",
         )
 
-    session.concerns_ranked = [c.model_dump() for c in body.concerns]
+    session.concerns_ranked = [c.model_dump() for c in payload.concerns]
     session.last_activity_at = datetime.now(timezone.utc)
     await db.flush()
 
-    await _audit_log(
-        db,
-        user_id=current_user["user_id"],
-        action="rank_concerns",
-        resource_type="conversation_session",
-        resource_id=session_id,
-        success=True,
-    )
+    try:
+        await _audit_log(
+            db,
+            user_id=current_user["user_id"],
+            action="data_modify",
+            resource_type="conversation_session",
+            resource_id=session_id,
+            success=True,
+        )
+    except Exception:
+        logger.warning("Failed to write audit log for rank_concerns")
 
+    await db.commit()
     await db.refresh(session, ["messages"])
     return _session_to_response(session)
 
@@ -514,14 +545,18 @@ async def get_conversation(
     """
     session = await _get_session_with_access(db, session_id, current_user)
 
-    await _audit_log(
-        db,
-        user_id=current_user["user_id"],
-        action="read_conversation",
-        resource_type="conversation_session",
-        resource_id=session_id,
-        success=True,
-    )
+    try:
+        await _audit_log(
+            db,
+            user_id=current_user["user_id"],
+            action="data_access",
+            resource_type="conversation_session",
+            resource_id=session_id,
+            success=True,
+        )
+    except Exception:
+        logger.warning("Failed to write audit log for get_conversation")
+    await db.commit()
 
     return _session_to_response(session)
 
@@ -533,7 +568,7 @@ async def get_conversation(
 @router.put("/{session_id}/update", response_model=ConversationResponse)
 async def update_conversation(
     session_id: uuid.UUID,
-    body: PatientAnswer,
+    payload: PatientAnswer,
     current_user: dict = Depends(require_role(Role.PATIENT)),
     db: AsyncSession = Depends(get_db),
 ):
@@ -554,7 +589,7 @@ async def update_conversation(
     # Find the message being updated
     target_msg = None
     for msg in session.messages:
-        if msg.sequence_number == body.question_sequence and msg.role == MessageRole.PATIENT:
+        if msg.sequence_number == payload.question_sequence and msg.role == MessageRole.PATIENT:
             target_msg = msg
             break
 
@@ -570,7 +605,7 @@ async def update_conversation(
         session_id=session.id,
         sequence_number=next_seq,
         role=MessageRole.PATIENT,
-        content=encrypt_phi(body.answer_text),
+        content=encrypt_phi(payload.answer_text),
         content_type=ContentType.TEXT,
     )
     db.add(update_msg)
@@ -591,7 +626,7 @@ async def update_conversation(
                 "id": str(uuid.uuid4()),
                 "appt_id": str(appointment.id),
                 "ver": appointment.version,
-                "changes": '{"type": "conversation_update", "sequence": ' + str(body.question_sequence) + '}',
+                "changes": '{"type": "conversation_update", "sequence": ' + str(payload.question_sequence) + '}',
                 "user_id": str(current_user["user_id"]),
             },
         )
@@ -599,15 +634,19 @@ async def update_conversation(
     session.last_activity_at = datetime.now(timezone.utc)
     await db.flush()
 
-    await _audit_log(
-        db,
-        user_id=current_user["user_id"],
-        action="update_conversation_response",
-        resource_type="conversation_session",
-        resource_id=session_id,
-        success=True,
-    )
+    try:
+        await _audit_log(
+            db,
+            user_id=current_user["user_id"],
+            action="data_modify",
+            resource_type="conversation_session",
+            resource_id=session_id,
+            success=True,
+        )
+    except Exception:
+        logger.warning("Failed to write audit log for update_conversation")
 
+    await db.commit()
     await db.refresh(session, ["messages"])
     return _session_to_response(session)
 
@@ -671,14 +710,17 @@ async def complete_conversation(
 
     await db.flush()
 
-    await _audit_log(
-        db,
-        user_id=current_user["user_id"],
-        action="complete_conversation",
-        resource_type="conversation_session",
-        resource_id=session_id,
-        success=True,
-    )
+    try:
+        await _audit_log(
+            db,
+            user_id=current_user["user_id"],
+            action="data_modify",
+            resource_type="conversation_session",
+            resource_id=session_id,
+            success=True,
+        )
+    except Exception:
+        logger.warning("Failed to write audit log for complete_conversation")
 
     logger.info(
         "Conversation %s completed; AI report generation triggered for appointment %s",
@@ -686,5 +728,6 @@ async def complete_conversation(
         session.appointment_id,
     )
 
+    await db.commit()
     await db.refresh(session, ["messages"])
     return _session_to_response(session)

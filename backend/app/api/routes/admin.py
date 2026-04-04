@@ -1,6 +1,7 @@
 """Admin routes for coverage, proxy management, and audit logs."""
 
 from datetime import date
+from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -114,7 +115,7 @@ async def create_proxy(
     proxy_user_id: UUID,
     relationship: str,
     state_code: str,
-    minor_age_of_consent: int | None = None,
+    minor_age_of_consent: Optional[int] = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -190,11 +191,11 @@ async def verify_proxy(
 
 @router.get("/audit-logs", dependencies=[Depends(require_role(Role.ADMIN))])
 async def query_audit_logs(
-    user_id: UUID | None = None,
-    patient_id: UUID | None = None,
-    action: str | None = None,
-    start_date: date | None = None,
-    end_date: date | None = None,
+    user_id: Optional[UUID] = None,
+    patient_id: Optional[UUID] = None,
+    action: Optional[str] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),

@@ -1,11 +1,19 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
-import { ProtectedRoute } from "./components/common/ProtectedRoute";
-import { Layout } from "./components/common/Layout";
+import ProtectedRoute from "./components/common/ProtectedRoute";
+import Layout from "./components/common/Layout";
 import { LoginPage } from "./pages/LoginPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { IntakePage } from "./pages/IntakePage";
 import { AppointmentDetailPage } from "./pages/AppointmentDetailPage";
+
+function LayoutWrapper() {
+  return (
+    <Layout>
+      <Outlet />
+    </Layout>
+  );
+}
 
 export default function App() {
   return (
@@ -16,7 +24,7 @@ export default function App() {
           path="/"
           element={
             <ProtectedRoute>
-              <Layout />
+              <LayoutWrapper />
             </ProtectedRoute>
           }
         >
@@ -24,7 +32,7 @@ export default function App() {
           <Route
             path="intake"
             element={
-              <ProtectedRoute requiredRole="patient">
+              <ProtectedRoute allowedRoles={["patient"]}>
                 <IntakePage />
               </ProtectedRoute>
             }

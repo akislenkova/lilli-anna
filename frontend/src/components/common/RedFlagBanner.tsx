@@ -1,3 +1,4 @@
+import React from "react";
 import type { RedFlagAlert } from "../../types";
 
 interface Props {
@@ -17,7 +18,7 @@ function severityStyles(severity: RedFlagAlert["severity"]): string {
   }
 }
 
-function severityIcon(severity: RedFlagAlert["severity"]): JSX.Element {
+function severityIcon(severity: RedFlagAlert["severity"]): React.ReactElement {
   if (severity === "emergency" || severity === "urgent") {
     return (
       <svg className="h-5 w-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

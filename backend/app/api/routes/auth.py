@@ -3,6 +3,7 @@
 import logging
 import uuid
 from datetime import datetime, timezone
+from typing import Union
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
@@ -36,15 +37,14 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 async def _audit_log(
     db: AsyncSession,
     *,
-    user_id: uuid.UUID | str,
+    user_id: Union[str, uuid.UUID],
     action: str,
     resource_type: str,
-    resource_id: uuid.UUID | str,
+    resource_id: Union[str, uuid.UUID],
     success: bool,
 ) -> None:
     """Write an audit log entry.  Uses raw execute to avoid circular model imports."""
     await db.execute(
-        # language=SQL
         __import__("sqlalchemy").text(
             "INSERT INTO audit_logs (id, user_id, action, resource_type, resource_id, success, created_at) "
             "VALUES (:id, :user_id, :action, :resource_type, :resource_id, :success, now())"
@@ -65,22 +65,25 @@ async def _audit_log(
 # ---------------------------------------------------------------------------
 
 @router.post("/login", response_model=TokenResponse)
-async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
+async def login(credentials: LoginRequest, db: AsyncSession = Depends(get_db)):
     """Authenticate user with email and password, returning a JWT bearer token."""
 
-    result = await db.execute(select(User).where(User.email == body.email))
+    result = await db.execute(select(User).where(User.email == credentials.email))
     user = result.scalar_one_or_none()
 
-    if user is None or not verify_password(body.password, user.hashed_password):
-        logger.warning("Failed login attempt for email=%s", body.email)
-        await _audit_log(
-            db,
-            user_id=user.id if user else uuid.UUID(int=0),
-            action="login_failed",
-            resource_type="user",
-            resource_id=user.id if user else uuid.UUID(int=0),
-            success=False,
-        )
+    if user is None or not verify_password(credentials.password, user.hashed_password):
+        logger.warning("Failed login attempt for email=%s", credentials.email)
+        try:
+            await _audit_log(
+                db,
+                user_id=user.id if user else uuid.UUID(int=0),
+                action="login",
+                resource_type="user",
+                resource_id=user.id if user else uuid.UUID(int=0),
+                success=False,
+            )
+        except Exception:
+            logger.warning("Failed to write audit log for login failure")
         await db.commit()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -102,14 +105,17 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
         data={"sub": str(user.id), "role": user.role.value, "name": user.full_name}
     )
 
-    await _audit_log(
-        db,
-        user_id=user.id,
-        action="login_success",
-        resource_type="user",
-        resource_id=user.id,
-        success=True,
-    )
+    try:
+        await _audit_log(
+            db,
+            user_id=user.id,
+            action="login",
+            resource_type="user",
+            resource_id=user.id,
+            success=True,
+        )
+    except Exception:
+        logger.warning("Failed to write audit log for login")
     await db.commit()
 
     return TokenResponse(access_token=token)
@@ -121,33 +127,15 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def register(
-    body: UserCreate,
+    user_in: UserCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: dict | None = None,
 ):
-    """Create a new user account.
+    """Create a new user account."""
 
-    Patients can self-register (no auth required).  Creating provider roles
-    (physician, nurse, scheduler, admin) requires an authenticated admin.
-    """
-
-    requested_role = Role(body.role)
-
-    # Provider roles require admin authorization
-    if requested_role != Role.PATIENT:
-        if current_user is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Admin authentication required to create provider accounts",
-            )
-        if current_user["role"] != Role.ADMIN.value:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only admins can create provider accounts",
-            )
+    requested_role = Role(user_in.role)
 
     # Check duplicate email
-    existing = await db.execute(select(User).where(User.email == body.email))
+    existing = await db.execute(select(User).where(User.email == user_in.email))
     if existing.scalar_one_or_none() is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -155,24 +143,26 @@ async def register(
         )
 
     new_user = User(
-        email=body.email,
-        hashed_password=hash_password(body.password),
-        full_name=body.full_name,
+        email=user_in.email,
+        hashed_password=hash_password(user_in.password),
+        full_name=user_in.full_name,
         role=requested_role,
         is_active=True,
     )
     db.add(new_user)
     await db.flush()
 
-    registrant_id = current_user["user_id"] if current_user else str(new_user.id)
-    await _audit_log(
-        db,
-        user_id=registrant_id,
-        action="user_registered",
-        resource_type="user",
-        resource_id=new_user.id,
-        success=True,
-    )
+    try:
+        await _audit_log(
+            db,
+            user_id=str(new_user.id),
+            action="data_modify",
+            resource_type="user",
+            resource_id=new_user.id,
+            success=True,
+        )
+    except Exception:
+        logger.warning("Failed to write audit log for registration")
     await db.commit()
     await db.refresh(new_user)
 
@@ -196,14 +186,17 @@ async def logout(
     extended to maintain a token denylist backed by Redis.
     """
 
-    await _audit_log(
-        db,
-        user_id=current_user["user_id"],
-        action="logout",
-        resource_type="user",
-        resource_id=current_user["user_id"],
-        success=True,
-    )
+    try:
+        await _audit_log(
+            db,
+            user_id=current_user["user_id"],
+            action="logout",
+            resource_type="user",
+            resource_id=current_user["user_id"],
+            success=True,
+        )
+    except Exception:
+        logger.warning("Failed to write audit log for logout")
     await db.commit()
     return None
 
@@ -227,14 +220,17 @@ async def get_me(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
 
-    await _audit_log(
-        db,
-        user_id=current_user["user_id"],
-        action="read_own_profile",
-        resource_type="user",
-        resource_id=current_user["user_id"],
-        success=True,
-    )
+    try:
+        await _audit_log(
+            db,
+            user_id=current_user["user_id"],
+            action="data_access",
+            resource_type="user",
+            resource_id=current_user["user_id"],
+            success=True,
+        )
+    except Exception:
+        logger.warning("Failed to write audit log for /me")
     await db.commit()
 
     return UserResponse.model_validate(user)

@@ -11,53 +11,14 @@ import uuid
 from datetime import date, datetime, timezone
 from typing import Optional
 
-from sqlalchemy import Boolean, Column, Date, DateTime, ForeignKey, Integer, String, select
-from sqlalchemy.dialects.postgresql import UUID as PGUUID
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base, TimestampMixin
+from app.models.proxy import ProxyAuthorization
 from app.models.user import User
 from app.services.audit_service import AuditService
 
 logger = logging.getLogger(__name__)
-
-
-# ---------------------------------------------------------------------------
-# Proxy authorization model
-# ---------------------------------------------------------------------------
-class ProxyAuthorization(TimestampMixin, Base):
-    __tablename__ = "proxy_authorizations"
-
-    patient_id: Mapped[uuid.UUID] = mapped_column(
-        PGUUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
-    )
-    proxy_user_id: Mapped[uuid.UUID] = mapped_column(
-        PGUUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
-    )
-    relationship_type: Mapped[str] = mapped_column(String(100), nullable=False)
-    consent_document_path: Mapped[str] = mapped_column(String(500), nullable=False)
-    state_code: Mapped[str] = mapped_column(String(2), nullable=False)
-    age_of_consent: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    verified_by: Mapped[Optional[uuid.UUID]] = mapped_column(
-        PGUUID(as_uuid=True), ForeignKey("users.id"), nullable=True
-    )
-    verified_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    deactivated_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-
-    # Relationships
-    patient: Mapped["User"] = relationship("User", foreign_keys=[patient_id])
-    proxy_user: Mapped["User"] = relationship("User", foreign_keys=[proxy_user_id])
-    verified_by_user: Mapped[Optional["User"]] = relationship(
-        "User", foreign_keys=[verified_by]
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -74,16 +35,12 @@ class ProxyService:
         self,
         patient_id: uuid.UUID,
         proxy_user_id: uuid.UUID,
-        relationship: str,
+        relationship_val: str,
         consent_path: str,
         state_code: str,
         age_of_consent: int | None = None,
     ) -> ProxyAuthorization:
-        """Create a new proxy authorization record.
-
-        The proxy is not active until verified by authorized staff via
-        :meth:`verify_proxy`.
-        """
+        """Create a new proxy authorization record."""
         if patient_id == proxy_user_id:
             raise ValueError("A user cannot be their own proxy")
 
@@ -100,10 +57,11 @@ class ProxyService:
         proxy = ProxyAuthorization(
             patient_id=patient_id,
             proxy_user_id=proxy_user_id,
-            relationship_type=relationship,
+            relationship=relationship_val,
             consent_document_path=consent_path,
             state_code=state_code.upper(),
-            age_of_consent=age_of_consent,
+            minor_age_of_consent=age_of_consent,
+            effective_date=date.today(),
             is_active=True,
             verified=False,
         )
@@ -117,7 +75,7 @@ class ProxyService:
             changes={
                 "action": "created",
                 "patient_id": str(patient_id),
-                "relationship": relationship,
+                "relationship": relationship_val,
                 "state_code": state_code.upper(),
             },
             ip_address="",
@@ -128,14 +86,14 @@ class ProxyService:
             proxy.id,
             patient_id,
             proxy_user_id,
-            relationship,
+            relationship_val,
         )
         return proxy
 
     async def verify_proxy(
         self,
         proxy_id: uuid.UUID,
-        verified_by: uuid.UUID,
+        verified_by_id: uuid.UUID,
     ) -> ProxyAuthorization:
         """Mark a proxy authorization as verified by authorized staff."""
         proxy = await self._db.get(ProxyAuthorization, proxy_id)
@@ -146,19 +104,18 @@ class ProxyService:
             raise ValueError("Cannot verify an inactive proxy authorization")
 
         proxy.verified = True
-        proxy.verified_by = verified_by
-        proxy.verified_at = datetime.now(timezone.utc)
+        proxy.verified_by = verified_by_id
         await self._db.flush()
 
         await self._audit.log_modification(
-            user_id=verified_by,
+            user_id=verified_by_id,
             resource_type="proxy_authorization",
             resource_id=proxy.id,
             changes={"action": "verified"},
             ip_address="",
         )
 
-        logger.info("proxy verified | id=%s by=%s", proxy_id, verified_by)
+        logger.info("proxy verified | id=%s by=%s", proxy_id, verified_by_id)
         return proxy
 
     async def check_proxy_access(
@@ -179,9 +136,9 @@ class ProxyService:
         if proxy is None:
             return False
 
-        # Additional check: if age_of_consent is set, verify the patient
+        # Additional check: if minor_age_of_consent is set, verify the patient
         # hasn't reached that age
-        if proxy.age_of_consent is not None:
+        if proxy.minor_age_of_consent is not None:
             age_check = await self.check_age_of_consent(patient_id)
             if age_check.get("has_reached_consent_age", False):
                 logger.warning(
@@ -196,17 +153,9 @@ class ProxyService:
         self,
         patient_id: uuid.UUID,
     ) -> dict:
-        """Check if a patient is approaching or has reached the age of consent.
-
-        Returns a dict with:
-        - has_reached_consent_age: bool
-        - approaching (within 6 months): bool
-        - patient_age: current age in years
-        - consent_age: the configured threshold
-        """
+        """Check if a patient is approaching or has reached the age of consent."""
         from app.models.patient import PatientProfile
 
-        # Look up patient DOB
         user = await self._db.get(User, patient_id)
         profile_stmt = select(PatientProfile).where(
             PatientProfile.user_id == patient_id
@@ -215,9 +164,9 @@ class ProxyService:
         profile = profile_result.scalar_one_or_none()
 
         dob = None
-        if profile and profile.date_of_birth:
+        if profile and hasattr(profile, "date_of_birth") and profile.date_of_birth:
             dob = profile.date_of_birth
-        elif user and user.date_of_birth:
+        elif user and hasattr(user, "date_of_birth") and user.date_of_birth:
             dob = user.date_of_birth
 
         if dob is None:
@@ -233,7 +182,7 @@ class ProxyService:
         proxy_stmt = select(ProxyAuthorization).where(
             ProxyAuthorization.patient_id == patient_id,
             ProxyAuthorization.is_active == True,  # noqa: E712
-            ProxyAuthorization.age_of_consent.isnot(None),
+            ProxyAuthorization.minor_age_of_consent.isnot(None),
         ).limit(1)
         proxy_result = await self._db.execute(proxy_stmt)
         proxy = proxy_result.scalar_one_or_none()
@@ -244,14 +193,13 @@ class ProxyService:
                 "approaching": False,
                 "patient_age": self._calculate_age(dob),
                 "consent_age": None,
-                "info": "No proxy with age_of_consent found",
+                "info": "No proxy with minor_age_of_consent found",
             }
 
         current_age = self._calculate_age(dob)
-        consent_age = proxy.age_of_consent
+        consent_age = proxy.minor_age_of_consent
         has_reached = current_age >= consent_age
 
-        # "Approaching" = within 6 months of the birthday that hits consent age
         approaching = False
         if not has_reached:
             consent_birthday = date(
@@ -282,7 +230,6 @@ class ProxyService:
             raise ValueError(f"Proxy authorization {proxy_id} not found")
 
         proxy.is_active = False
-        proxy.deactivated_at = datetime.now(timezone.utc)
         await self._db.flush()
 
         await self._audit.log_modification(

@@ -11,43 +11,13 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
-from sqlalchemy import Column, DateTime, Index, String, Text, Boolean, select, and_, func
-from sqlalchemy.dialects.postgresql import JSON, UUID as PGUUID
+from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.base import Base
+from app.models.audit import AuditLog
 from app.schemas.audit import AuditLogQuery
 
 logger = logging.getLogger(__name__)
-
-
-# ---------------------------------------------------------------------------
-# Audit log table (append-only)
-# ---------------------------------------------------------------------------
-class AuditLog(Base):
-    """Immutable audit log entry.  No UPDATE/DELETE should ever target this table."""
-
-    __tablename__ = "audit_logs"
-
-    id = Column(PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    timestamp = Column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
-    )
-    user_id = Column(PGUUID(as_uuid=True), nullable=True, index=True)
-    patient_id = Column(PGUUID(as_uuid=True), nullable=True, index=True)
-    action = Column(String(100), nullable=False, index=True)
-    resource_type = Column(String(100), nullable=True)
-    resource_id = Column(PGUUID(as_uuid=True), nullable=True)
-    success = Column(Boolean, nullable=False, default=True)
-    details = Column(JSON, nullable=True)
-    ip_address = Column(String(45), nullable=True)
-    user_agent = Column(Text, nullable=True)
-    denial_reason = Column(Text, nullable=True)
-
-    __table_args__ = (
-        Index("ix_audit_logs_timestamp", "timestamp"),
-        Index("ix_audit_logs_user_action", "user_id", "action"),
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -99,9 +69,9 @@ class AuditService:
         """Record an access attempt against a protected resource."""
         return await self._insert(
             user_id=user_id,
-            patient_id=patient_id,
+            patient_id_accessed=patient_id,
             resource_type=resource_type,
-            resource_id=resource_id,
+            resource_id=str(resource_id),
             action=action,
             success=success,
             details=details,
@@ -120,7 +90,7 @@ class AuditService:
         """Record a login attempt (successful or failed)."""
         return await self._insert(
             user_id=user_id,
-            action="login_success" if success else "login_failure",
+            action="login",
             success=success,
             ip_address=ip_address,
             user_agent=user_agent,
@@ -136,7 +106,7 @@ class AuditService:
         """Record session lifecycle events (timeout, logout, etc.)."""
         return await self._insert(
             user_id=user_id,
-            action=f"session_{event_type}",
+            action="logout" if event_type == "logout" else "session_timeout",
             ip_address=ip_address,
             details={"event_type": event_type},
         )
@@ -151,7 +121,7 @@ class AuditService:
         """Record when a user exports/downloads patient data."""
         return await self._insert(
             user_id=user_id,
-            patient_id=patient_id,
+            patient_id_accessed=patient_id,
             action="data_export",
             resource_type=resource_type,
             details=details,
@@ -168,9 +138,9 @@ class AuditService:
         """Record a modification (create/update) of a resource."""
         return await self._insert(
             user_id=user_id,
-            action="modification",
+            action="data_modify",
             resource_type=resource_type,
-            resource_id=resource_id,
+            resource_id=str(resource_id),
             details={"changes": changes},
             ip_address=ip_address,
         )
@@ -188,19 +158,19 @@ class AuditService:
         if filters.user_id is not None:
             conditions.append(AuditLog.user_id == filters.user_id)
         if filters.patient_id is not None:
-            conditions.append(AuditLog.patient_id == filters.patient_id)
+            conditions.append(AuditLog.patient_id_accessed == filters.patient_id)
         if filters.action_type is not None:
             conditions.append(AuditLog.action == filters.action_type)
         if filters.date_range_start is not None:
-            conditions.append(AuditLog.timestamp >= filters.date_range_start)
+            conditions.append(AuditLog.created_at >= filters.date_range_start)
         if filters.date_range_end is not None:
-            conditions.append(AuditLog.timestamp <= filters.date_range_end)
+            conditions.append(AuditLog.created_at <= filters.date_range_end)
 
         if conditions:
             stmt = stmt.where(and_(*conditions))
 
         stmt = (
-            stmt.order_by(AuditLog.timestamp.desc())
+            stmt.order_by(AuditLog.created_at.desc())
             .offset((filters.page - 1) * filters.per_page)
             .limit(filters.per_page)
         )

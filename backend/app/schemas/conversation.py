@@ -48,8 +48,8 @@ class FollowUpQuestion(BaseModel):
 class PatientAnswer(BaseModel):
     """Patient's answer to a follow-up question."""
 
-    session_id: UUID
-    question_sequence: int = Field(..., ge=0)
+    session_id: Optional[UUID] = None
+    question_sequence: Optional[int] = Field(default=None, ge=0)
     answer_text: str = Field(..., min_length=1)
 
 
@@ -63,7 +63,7 @@ class VoiceNoteUpload(BaseModel):
 class TranscriptConfirmation(BaseModel):
     """Patient confirms or corrects the AI-generated transcript."""
 
-    session_id: UUID
+    session_id: Optional[UUID] = None
     transcript_text: str = Field(..., min_length=1)
     confirmed: bool
 
