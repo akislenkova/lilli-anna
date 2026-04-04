@@ -212,10 +212,15 @@ async def start_conversation(
     appointment = result.scalar_one_or_none()
 
     if appointment is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No pending intake appointment found for this visit type",
+        # Auto-create a pending intake appointment for the patient
+        appointment = Appointment(
+            patient_id=patient_id,
+            visit_type=body.visit_type,
+            status="pending_intake",
+            initial_reason="",
         )
+        db.add(appointment)
+        await db.flush()
 
     # Check for an existing active session on this appointment
     existing = await db.execute(
