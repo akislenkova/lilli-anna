@@ -7,6 +7,7 @@ from typing import Optional, Union
 import logging
 import uuid
 from datetime import date, datetime, timedelta, timezone
+from typing import Optional, Union
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import and_, func, select, text

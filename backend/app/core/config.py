@@ -16,10 +16,10 @@ class Settings(BaseSettings):
     SESSION_TIMEOUT_MINUTES: int = 15
 
     # AES-256 encryption key for PHI fields (base64-encoded 32-byte key)
-    ENCRYPTION_KEY: str = "CHANGE-ME-base64-encoded-32-byte-key"
+    ENCRYPTION_KEY: str = "lAO2oizmHDDzVCFW__ketdDkaVkKRocUmfk0lLCOjCw="
 
     # CORS
-    CORS_ORIGINS: list[str] = ["http://localhost:3000"]
+    CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:5173"]
 
     # Epic MyChart EHR stub
     EHR_BASE_URL: str = "http://localhost:8081/ehr"

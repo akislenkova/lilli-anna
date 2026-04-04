@@ -4,7 +4,7 @@ import base64
 import enum
 import os
 from datetime import datetime, timedelta, timezone
-from typing import Annotated
+from typing import Annotated, Optional
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from fastapi import Depends, HTTPException, status
@@ -87,8 +87,8 @@ def get_current_user(
     and ``role``.
     """
     payload = verify_access_token(token)
-    user_id: str | None = payload.get("sub")
-    role: str | None = payload.get("role")
+    user_id: Optional[str] = payload.get("sub")
+    role: Optional[str] = payload.get("role")
     if user_id is None or role is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

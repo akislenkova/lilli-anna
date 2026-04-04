@@ -8,6 +8,7 @@ import json
 import logging
 import uuid
 from datetime import datetime, timezone
+from typing import Optional, Union
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select

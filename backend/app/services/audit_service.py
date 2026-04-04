@@ -71,7 +71,7 @@ class AuditService:
             user_id=user_id,
             patient_id_accessed=patient_id,
             resource_type=resource_type,
-            resource_id=resource_id,
+            resource_id=str(resource_id),
             action=action,
             success=success,
             details=details,
@@ -90,7 +90,7 @@ class AuditService:
         """Record a login attempt (successful or failed)."""
         return await self._insert(
             user_id=user_id,
-            action="login_success" if success else "login_failure",
+            action="login",
             success=success,
             ip_address=ip_address,
             user_agent=user_agent,
@@ -106,7 +106,7 @@ class AuditService:
         """Record session lifecycle events (timeout, logout, etc.)."""
         return await self._insert(
             user_id=user_id,
-            action=f"session_{event_type}",
+            action="logout" if event_type == "logout" else "session_timeout",
             ip_address=ip_address,
             details={"event_type": event_type},
         )
@@ -138,9 +138,9 @@ class AuditService:
         """Record a modification (create/update) of a resource."""
         return await self._insert(
             user_id=user_id,
-            action="modification",
+            action="data_modify",
             resource_type=resource_type,
-            resource_id=resource_id,
+            resource_id=str(resource_id),
             details={"changes": changes},
             ip_address=ip_address,
         )
