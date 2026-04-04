@@ -12,7 +12,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.core.security import Role, encrypt_phi, get_current_user, require_role
-from app.models.appointment import Appointment
+from app.models.appointment import Appointment, AppointmentStatus, VisitType as AppointmentVisitType
 from app.models.conversation import (
     ContentType,
     ConversationMessage as ConversationMessageModel,
@@ -207,7 +207,7 @@ async def start_conversation(
         select(Appointment)
         .where(
             Appointment.patient_id == patient_id,
-            Appointment.status == "pending_intake",
+            Appointment.status == AppointmentStatus.PENDING_INTAKE,
             Appointment.visit_type == payload.visit_type,
         )
         .order_by(Appointment.created_at.desc())
@@ -219,9 +219,8 @@ async def start_conversation(
         # Auto-create a pending intake appointment for the patient
         appointment = Appointment(
             patient_id=patient_id,
-            visit_type=payload.visit_type,
-            status="pending_intake",
-            initial_reason="",
+            visit_type=AppointmentVisitType(payload.visit_type),
+            status=AppointmentStatus.PENDING_INTAKE,
         )
         db.add(appointment)
         await db.flush()
@@ -691,7 +690,7 @@ async def complete_conversation(
     )
     appointment = appt_result.scalar_one_or_none()
     if appointment:
-        appointment.status = "intake_complete"
+        appointment.status = AppointmentStatus.INTAKE_COMPLETE
 
     # Trigger AI report generation (placeholder -- in production this would
     # enqueue a background task via Celery, ARQ, or similar)

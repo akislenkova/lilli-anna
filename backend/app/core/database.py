@@ -61,5 +61,12 @@ async def init_db() -> None:
     Intended for development / test bootstrapping.  In production, use Alembic
     migrations instead.
     """
+    from sqlalchemy import text
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Ensure physician_id is nullable (appointments can be created during
+        # intake before a physician is assigned).
+        await conn.execute(
+            text("ALTER TABLE appointments ALTER COLUMN physician_id DROP NOT NULL")
+        )
