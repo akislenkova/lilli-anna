@@ -7,6 +7,7 @@ from typing import Optional, Union
 import logging
 import uuid
 from datetime import datetime, timezone
+from typing import Union
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
@@ -48,7 +49,6 @@ async def _audit_log(
 ) -> None:
     """Write an audit log entry.  Uses raw execute to avoid circular model imports."""
     await db.execute(
-        # language=SQL
         __import__("sqlalchemy").text(
             "INSERT INTO audit_logs (id, user_id, action, resource_type, resource_id, success, created_at) "
             "VALUES (:id, :user_id, :action, :resource_type, :resource_id, :success, now())"

@@ -1,35 +1,37 @@
-import { useCallback, useRef, useState } from "react";
-import type { ConversationMessage, ConversationSession, VisitType } from "../../types";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import type { VisitType } from "../../types";
 import DisclaimerModal from "../common/DisclaimerModal";
-import { RedFlagBanner } from "../common/RedFlagBanner";
 import * as conversationService from "../../services/conversations";
+import type { ConversationState } from "../../services/conversations";
 
 type Step =
   | "disclaimer"
   | "visit_type"
   | "initial_concern"
   | "conversation"
-  | "rank_concerns"
-  | "review";
+  | "review"
+  | "completed";
+
+const MAX_QUESTIONS = 10;
 
 export default function IntakeFlow() {
+  const navigate = useNavigate();
   const [step, setStep] = useState<Step>("disclaimer");
   const [visitType, setVisitType] = useState<VisitType | null>(null);
-  const [session, setSession] = useState<ConversationSession | null>(null);
+  const [session, setSession] = useState<ConversationState | null>(null);
   const [answer, setAnswer] = useState("");
   const [initialConcern, setInitialConcern] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [rankedConcerns, setRankedConcerns] = useState<string[]>([]);
+  const [showCheck, setShowCheck] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
   // ── Disclaimer ──
   const handleDisclaimerAccept = () => setStep("visit_type");
-  const handleDisclaimerDecline = () => {
-    window.location.href = "/";
-  };
+  const handleDisclaimerDecline = () => navigate("/");
 
   // ── Visit type selection ──
   const handleVisitTypeSelect = async (type: VisitType) => {
@@ -63,7 +65,6 @@ export default function IntakeFlow() {
     setError(null);
     try {
       const s = await conversationService.startConversation(visitType, true);
-      // Send the initial concern as the first answer
       const updated = await conversationService.submitAnswer(s.id, initialConcern.trim());
       setSession(updated);
       setStep("conversation");
@@ -83,15 +84,6 @@ export default function IntakeFlow() {
       const updated = await conversationService.submitAnswer(session.id, answer.trim());
       setSession(updated);
       setAnswer("");
-
-      if (updated.status === "completed") {
-        if (updated.concerns.length > 3) {
-          setRankedConcerns(updated.concerns.slice(0, 3));
-          setStep("rank_concerns");
-        } else {
-          setStep("review");
-        }
-      }
     } catch {
       setError("Failed to submit your answer. Please try again.");
     } finally {
@@ -117,8 +109,7 @@ export default function IntakeFlow() {
         if (session) {
           setLoading(true);
           try {
-            const updated = await conversationService.uploadVoiceNote(session.id, blob);
-            setSession(updated);
+            await conversationService.uploadVoiceNote(session.id, blob);
           } catch {
             setError("Failed to upload voice note.");
           } finally {
@@ -140,50 +131,147 @@ export default function IntakeFlow() {
     setIsRecording(false);
   }, []);
 
-  // ── Rank concerns ──
-  const handleRankSubmit = async () => {
-    if (!session) return;
-    setLoading(true);
-    try {
-      await conversationService.rankConcerns(session.id, rankedConcerns);
-      setStep("review");
-    } catch {
-      setError("Failed to submit concern ranking.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const moveConcern = (index: number, direction: "up" | "down") => {
-    const updated = [...rankedConcerns];
-    const swap = direction === "up" ? index - 1 : index + 1;
-    if (swap < 0 || swap >= updated.length) return;
-    [updated[index], updated[swap]] = [updated[swap]!, updated[index]!];
-    setRankedConcerns(updated);
-  };
-
   // ── Complete ──
   const handleComplete = async () => {
     if (!session) return;
     setLoading(true);
+    setError(null);
     try {
       await conversationService.completeConversation(session.id);
-      window.location.href = "/";
+      setStep("completed");
     } catch {
-      setError("Failed to complete the session.");
+      setError("Failed to complete the session. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
+  // Animate the checkmark after entering "completed" step
+  useEffect(() => {
+    if (step === "completed") {
+      const timer = setTimeout(() => setShowCheck(true), 100);
+      return () => clearTimeout(timer);
+    }
+  }, [step]);
+
   // ── Helpers ──
-  const latestAssistantMessage: ConversationMessage | undefined = session?.messages
-    .filter((m) => m.role === "assistant")
-    .at(-1);
+  const latestAiMessage = session?.messages
+    .filter((m) => m.role === "ai")
+    .slice(-1)[0];
 
   const questionProgress = session
-    ? `${session.current_question_index} / ${session.max_questions}`
+    ? `${session.questions_asked_count} / ${MAX_QUESTIONS}`
     : "";
+
+  // ── Completed view ──
+  if (step === "completed") {
+    return (
+      <div className="mx-auto flex max-w-lg flex-col items-center pt-16">
+        {/* Animated checkmark circle */}
+        <div
+          className={`flex h-28 w-28 items-center justify-center rounded-full transition-all duration-700 ease-out ${
+            showCheck
+              ? "scale-100 bg-emerald-500 opacity-100"
+              : "scale-50 bg-emerald-300 opacity-0"
+          }`}
+        >
+          <svg
+            className={`h-14 w-14 text-white transition-all duration-500 delay-300 ${
+              showCheck ? "scale-100 opacity-100" : "scale-0 opacity-0"
+            }`}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={3}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M5 13l4 4L19 7"
+            />
+          </svg>
+        </div>
+
+        {/* Title */}
+        <h1
+          className={`mt-8 text-2xl font-bold text-gray-900 transition-all duration-500 delay-500 ${
+            showCheck ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+          }`}
+        >
+          Intake Complete!
+        </h1>
+
+        {/* Subtitle */}
+        <p
+          className={`mt-3 text-center text-gray-500 transition-all duration-500 delay-700 ${
+            showCheck ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+          }`}
+        >
+          Your responses have been securely recorded and will help your
+          physician prepare for your appointment.
+        </p>
+
+        {/* Info cards */}
+        <div
+          className={`mt-8 w-full space-y-3 transition-all duration-500 delay-[900ms] ${
+            showCheck ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+          }`}
+        >
+          <div className="flex items-start gap-3 rounded-xl bg-white p-4 shadow-sm">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100">
+              <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <div>
+              <div className="text-sm font-medium text-gray-900">AI Report Generating</div>
+              <div className="text-xs text-gray-500">
+                Our AI is analyzing your responses to create a summary for your physician.
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3 rounded-xl bg-white p-4 shadow-sm">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100">
+              <svg className="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+            <div>
+              <div className="text-sm font-medium text-gray-900">HIPAA Secured</div>
+              <div className="text-xs text-gray-500">
+                All your health information is encrypted end-to-end and stored securely.
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3 rounded-xl bg-white p-4 shadow-sm">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-purple-100">
+              <svg className="h-5 w-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <div>
+              <div className="text-sm font-medium text-gray-900">Next Steps</div>
+              <div className="text-xs text-gray-500">
+                A scheduler will contact you to confirm your appointment time based on the AI's duration estimate.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Back to dashboard */}
+        <button
+          onClick={() => navigate("/")}
+          className={`mt-8 rounded-xl bg-blue-600 px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all duration-500 delay-[1100ms] ${
+            showCheck ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+          }`}
+        >
+          Back to Dashboard
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -195,10 +283,10 @@ export default function IntakeFlow() {
         </div>
         <div className="mt-1 h-2 w-full rounded-full bg-gray-200">
           <div
-            className="h-2 rounded-full bg-primary-500 transition-all"
+            className="h-2 rounded-full bg-blue-500 transition-all"
             style={{
               width: session
-                ? `${(session.current_question_index / session.max_questions) * 100}%`
+                ? `${(session.questions_asked_count / MAX_QUESTIONS) * 100}%`
                 : step === "disclaimer"
                   ? "0%"
                   : step === "visit_type"
@@ -236,7 +324,7 @@ export default function IntakeFlow() {
             <button
               onClick={() => handleVisitTypeSelect("yearly_checkup")}
               disabled={loading}
-              className="group rounded-xl border-2 border-gray-200 p-6 text-left transition-colors hover:border-primary-500 hover:bg-primary-50"
+              className="group rounded-xl border-2 border-gray-200 p-6 text-left transition-colors hover:border-blue-500 hover:bg-blue-50"
             >
               <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-green-100 text-green-700 group-hover:bg-green-200">
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -252,7 +340,7 @@ export default function IntakeFlow() {
             <button
               onClick={() => handleVisitTypeSelect("specific_concern")}
               disabled={loading}
-              className="group rounded-xl border-2 border-gray-200 p-6 text-left transition-colors hover:border-primary-500 hover:bg-primary-50"
+              className="group rounded-xl border-2 border-gray-200 p-6 text-left transition-colors hover:border-blue-500 hover:bg-blue-50"
             >
               <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100 text-blue-700 group-hover:bg-blue-200">
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -284,14 +372,14 @@ export default function IntakeFlow() {
             onChange={(e) => setInitialConcern(e.target.value)}
             placeholder="e.g., I've been having headaches for the past two weeks..."
             rows={4}
-            className="mt-4 w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+            className="mt-4 w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
           />
 
           <div className="mt-4 flex items-center gap-3">
             <button
               onClick={handleInitialConcernSubmit}
               disabled={loading || !initialConcern.trim()}
-              className="rounded-lg bg-primary-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
+              className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
             >
               {loading ? "Starting..." : "Continue"}
             </button>
@@ -314,29 +402,21 @@ export default function IntakeFlow() {
       {/* ── Step: Conversation ── */}
       {step === "conversation" && session && (
         <div className="space-y-4">
-          {/* Red flag banner if triggered */}
-          {session.concerns.length > 0 && (
-            <RedFlagBanner
-              flags={[]}
-              compact
-            />
-          )}
-
           {/* Messages history */}
           <div className="space-y-3">
-            {session.messages.map((msg) => (
+            {session.messages.map((msg, idx) => (
               <div
-                key={msg.id}
+                key={idx}
                 className={`rounded-xl p-4 ${
-                  msg.role === "assistant"
+                  msg.role === "ai"
                     ? "bg-white shadow-sm"
                     : msg.role === "patient"
-                      ? "ml-8 bg-primary-50"
+                      ? "ml-8 bg-blue-50"
                       : "bg-gray-100 text-xs italic text-gray-500"
                 }`}
               >
                 <div className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-400">
-                  {msg.role === "assistant" ? "Anilla" : msg.role === "patient" ? "You" : "System"}
+                  {msg.role === "ai" ? "Anilla" : msg.role === "patient" ? "You" : "System"}
                 </div>
                 <p className="text-sm text-gray-800 whitespace-pre-wrap">{msg.content}</p>
               </div>
@@ -344,82 +424,26 @@ export default function IntakeFlow() {
           </div>
 
           {/* Answer input */}
-          {session.status === "in_progress" && latestAssistantMessage && (
+          {session.status === "in_progress" && latestAiMessage && (
             <div className="rounded-xl bg-white p-4 shadow-sm">
-              {latestAssistantMessage.question_type === "yes_no" ? (
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => {
-                      setAnswer("Yes");
-                      setTimeout(() => {
-                        // Auto-submit yes/no
-                        conversationService
-                          .submitAnswer(session.id, "Yes")
-                          .then(setSession)
-                          .catch(() => setError("Failed to submit."));
-                      }, 0);
-                    }}
-                    disabled={loading}
-                    className="flex-1 rounded-lg border-2 border-green-200 px-4 py-3 text-sm font-medium text-green-700 hover:bg-green-50"
-                  >
-                    Yes
-                  </button>
-                  <button
-                    onClick={() => {
-                      setAnswer("No");
-                      setTimeout(() => {
-                        conversationService
-                          .submitAnswer(session.id, "No")
-                          .then(setSession)
-                          .catch(() => setError("Failed to submit."));
-                      }, 0);
-                    }}
-                    disabled={loading}
-                    className="flex-1 rounded-lg border-2 border-red-200 px-4 py-3 text-sm font-medium text-red-700 hover:bg-red-50"
-                  >
-                    No
-                  </button>
-                </div>
-              ) : latestAssistantMessage.question_type === "multiple_choice" &&
-                latestAssistantMessage.options ? (
-                <div className="space-y-2">
-                  {latestAssistantMessage.options.map((opt) => (
-                    <button
-                      key={opt}
-                      onClick={() => {
-                        setAnswer(opt);
-                        conversationService
-                          .submitAnswer(session.id, opt)
-                          .then(setSession)
-                          .catch(() => setError("Failed to submit."));
-                      }}
-                      disabled={loading}
-                      className="w-full rounded-lg border border-gray-200 px-4 py-3 text-left text-sm hover:bg-primary-50 hover:border-primary-300"
-                    >
-                      {opt}
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex gap-3">
-                  <input
-                    type="text"
-                    value={answer}
-                    onChange={(e) => setAnswer(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleSubmitAnswer()}
-                    placeholder="Type your answer..."
-                    className="flex-1 rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
-                    autoFocus
-                  />
-                  <button
-                    onClick={handleSubmitAnswer}
-                    disabled={loading || !answer.trim()}
-                    className="rounded-lg bg-primary-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
-                  >
-                    {loading ? "..." : "Send"}
-                  </button>
-                </div>
-              )}
+              <div className="flex gap-3">
+                <input
+                  type="text"
+                  value={answer}
+                  onChange={(e) => setAnswer(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSubmitAnswer()}
+                  placeholder="Type your answer..."
+                  className="flex-1 rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  autoFocus
+                />
+                <button
+                  onClick={handleSubmitAnswer}
+                  disabled={loading || !answer.trim()}
+                  className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {loading ? "..." : "Send"}
+                </button>
+              </div>
 
               {/* Voice note option */}
               <div className="mt-3 flex justify-end">
@@ -437,62 +461,18 @@ export default function IntakeFlow() {
               </div>
             </div>
           )}
-        </div>
-      )}
 
-      {/* ── Step: Rank Concerns ── */}
-      {step === "rank_concerns" && session && (
-        <div className="rounded-xl bg-white p-6 shadow-sm">
-          <h2 className="text-xl font-semibold text-gray-900">
-            Rank Your Top Concerns
-          </h2>
-          <p className="mt-1 text-sm text-gray-500">
-            Drag or use the arrows to rank your top 3 concerns in order of importance.
-          </p>
-
-          <div className="mt-4 space-y-2">
-            {rankedConcerns.map((concern, i) => (
-              <div
-                key={concern}
-                className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3"
+          {/* Complete button after some questions */}
+          {session.status === "in_progress" && session.questions_asked_count >= 1 && (
+            <div className="flex justify-end">
+              <button
+                onClick={() => setStep("review")}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
               >
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary-100 text-sm font-bold text-primary-700">
-                  {i + 1}
-                </span>
-                <span className="flex-1 text-sm text-gray-800">{concern}</span>
-                <div className="flex flex-col gap-0.5">
-                  <button
-                    onClick={() => moveConcern(i, "up")}
-                    disabled={i === 0}
-                    className="rounded p-0.5 text-gray-400 hover:text-gray-700 disabled:opacity-30"
-                    aria-label="Move up"
-                  >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={() => moveConcern(i, "down")}
-                    disabled={i === rankedConcerns.length - 1}
-                    className="rounded p-0.5 text-gray-400 hover:text-gray-700 disabled:opacity-30"
-                    aria-label="Move down"
-                  >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <button
-            onClick={handleRankSubmit}
-            disabled={loading}
-            className="mt-4 rounded-lg bg-primary-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
-          >
-            {loading ? "Submitting..." : "Confirm Ranking"}
-          </button>
+                Finish &amp; Review
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -510,39 +490,20 @@ export default function IntakeFlow() {
             <div className="mt-4 space-y-3">
               {session.messages
                 .filter((m) => m.role !== "system")
-                .map((msg) => (
+                .map((msg, idx) => (
                   <div
-                    key={msg.id}
+                    key={idx}
                     className={`rounded-lg p-3 ${
-                      msg.role === "assistant" ? "bg-gray-50" : "ml-4 bg-primary-50"
+                      msg.role === "ai" ? "bg-gray-50" : "ml-4 bg-blue-50"
                     }`}
                   >
                     <div className="text-xs font-medium uppercase text-gray-400">
-                      {msg.role === "assistant" ? "Question" : "Your Answer"}
+                      {msg.role === "ai" ? "Question" : "Your Answer"}
                     </div>
                     <p className="mt-1 text-sm text-gray-800">{msg.content}</p>
                   </div>
                 ))}
             </div>
-
-            {session.concerns.length > 0 && (
-              <div className="mt-4">
-                <h3 className="text-sm font-semibold text-gray-700">
-                  Identified Concerns
-                </h3>
-                <ul className="mt-2 space-y-1">
-                  {session.concerns.map((c, i) => (
-                    <li
-                      key={i}
-                      className="flex items-center gap-2 text-sm text-gray-600"
-                    >
-                      <span className="h-1.5 w-1.5 rounded-full bg-primary-500" />
-                      {c}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
           </div>
 
           <div className="flex justify-end gap-3">
@@ -555,7 +516,7 @@ export default function IntakeFlow() {
             <button
               onClick={handleComplete}
               disabled={loading}
-              className="rounded-lg bg-primary-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
+              className="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
             >
               {loading ? "Completing..." : "Complete Intake"}
             </button>

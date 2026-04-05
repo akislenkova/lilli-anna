@@ -102,11 +102,7 @@ class CoverageService:
         physician_id: uuid.UUID,
         patient_id: uuid.UUID,
     ) -> bool:
-        """Check if *physician_id* has active coverage for *patient_id*'s usual physician.
-
-        Looks up the patient's ``primary_physician_id`` and checks whether the
-        given physician has an active, current coverage for that absent physician.
-        """
+        """Check if *physician_id* has active coverage for *patient_id*'s usual physician."""
         from app.models.patient import PatientProfile
 
         profile_stmt = select(PatientProfile).where(
@@ -130,10 +126,7 @@ class CoverageService:
         return cov_result.scalar_one_or_none() is not None
 
     async def auto_expire_coverages(self) -> int:
-        """Expire all coverage records whose end_date has passed.
-
-        Returns the number of records expired.
-        """
+        """Expire all coverage records whose end_date has passed."""
         today = date.today()
         stmt = (
             update(Coverage)

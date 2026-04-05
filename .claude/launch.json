@@ -2,9 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "scheduling-system",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["tsx", "src/server.ts"],
+      "name": "frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "frontend",
       "port": 3000
     }
   ]

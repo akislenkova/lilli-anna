@@ -35,10 +35,10 @@ class AppointmentResponse(BaseModel):
 
     id: UUID
     patient_id: UUID
-    physician_id: UUID
+    physician_id: Optional[UUID] = None
     visit_type: str
     status: str
-    scheduled_start: datetime
+    scheduled_start: Optional[datetime] = None
     scheduled_end: Optional[datetime] = None
     ai_suggested_duration: Optional[int] = None
     scheduler_approved_duration: Optional[int] = None
@@ -63,10 +63,10 @@ class AppointmentSchedulerView(BaseModel):
 
     id: UUID
     patient_id: UUID
-    physician_id: UUID
+    physician_id: Optional[UUID] = None
     visit_type: str
     status: str
-    scheduled_start: datetime
+    scheduled_start: Optional[datetime] = None
     patient_initial_reason: Optional[str] = None
     questionnaire_answers: Optional[dict] = None
     ai_suggested_duration: Optional[int] = None
@@ -79,10 +79,10 @@ class AppointmentPhysicianView(BaseModel):
 
     id: UUID
     patient_id: UUID
-    physician_id: UUID
+    physician_id: Optional[UUID] = None
     visit_type: str
     status: str
-    scheduled_start: datetime
+    scheduled_start: Optional[datetime] = None
     full_transcript: Optional[str] = None
     ai_report: Optional[dict] = None
     ai_suggested_duration: Optional[int] = None
@@ -96,10 +96,10 @@ class AppointmentNurseView(BaseModel):
 
     id: UUID
     patient_id: UUID
-    physician_id: UUID
+    physician_id: Optional[UUID] = None
     visit_type: str
     status: str
-    scheduled_start: datetime
+    scheduled_start: Optional[datetime] = None
     ai_suggested_duration: Optional[int] = None
     conversation_summary: Optional[str] = None
     red_flags: list[str] = Field(default_factory=list)

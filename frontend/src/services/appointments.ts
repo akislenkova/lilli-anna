@@ -12,7 +12,7 @@ export async function listAppointments(
   filters?: Record<string, unknown>,
 ): Promise<Appointment[]> {
   const { data } = await api.get<AppointmentListResponse>(
-    "/appointments",
+    "/appointments/",
     { params: filters },
   );
   return data.items;
@@ -26,7 +26,7 @@ export async function getAppointment(id: string): Promise<Appointment> {
 export async function createAppointment(
   payload: Partial<Appointment>,
 ): Promise<Appointment> {
-  const { data } = await api.post<Appointment>("/appointments", payload);
+  const { data } = await api.post<Appointment>("/appointments/", payload);
   return data;
 }
 

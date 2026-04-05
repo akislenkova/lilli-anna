@@ -123,8 +123,8 @@ class SessionMiddleware(BaseHTTPMiddleware):
 
     @staticmethod
     def _is_auth_endpoint(path: str) -> bool:
-        auth_paths = {"/api/v1/auth/login", "/api/v1/auth/register", "/health", "/docs", "/openapi.json"}
-        return path in auth_paths or path.startswith("/api/v1/auth/")
+        auth_paths = {"/api/auth/login", "/api/auth/register", "/health", "/docs", "/openapi.json"}
+        return path in auth_paths or path.startswith("/api/auth/")
 
     @staticmethod
     def _extract_user_info(request: Request) -> Optional[tuple[str, str]]:
