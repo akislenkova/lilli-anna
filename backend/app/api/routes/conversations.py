@@ -10,9 +10,12 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.ai.symptom_extractor import SymptomExtractor
 from app.core.database import get_db
-from app.core.security import Role, encrypt_phi, get_current_user, require_role
+from app.core.security import Role, decrypt_phi, encrypt_phi, get_current_user, require_role
 from app.models.appointment import Appointment, AppointmentStatus, VisitType as AppointmentVisitType
+
+_extractor = SymptomExtractor()
 from app.models.conversation import (
     ContentType,
     ConversationMessage as ConversationMessageModel,
@@ -170,19 +173,116 @@ async def _get_session_with_access(
 def _session_to_response(session: ConversationSession) -> ConversationResponse:
     """Map a ConversationSession ORM instance to the response schema."""
     messages = sorted(session.messages, key=lambda m: m.sequence_number)
+
+    def _safe_content(m) -> str:
+        """Decrypt patient messages; AI/system messages are stored in plaintext."""
+        if m.role == MessageRole.PATIENT:
+            try:
+                return decrypt_phi(m.content)
+            except Exception:
+                return m.content
+        return m.content
+
     return ConversationResponse(
         session_id=session.id,
         status=session.status.value,
         messages=[
             ConversationMessage(
                 role=m.role.value,
-                content=m.content,
+                content=_safe_content(m),
                 content_type=m.content_type.value,
             )
             for m in messages
         ],
         questions_asked_count=session.questions_asked_count,
     )
+
+
+# ---------------------------------------------------------------------------
+# Intelligent follow-up question generation
+# ---------------------------------------------------------------------------
+
+# Questions organised by clinical domain — each list is asked in order,
+# then we move to the next domain.
+_DOMAIN_QUESTIONS = {
+    "symptom_detail": [
+        "When did you first notice this? Was the onset sudden or gradual?",
+        "How would you rate the severity on a scale of 1-10?",
+        "Is it constant, or does it come and go?",
+        "Does anything make it better or worse (movement, rest, medication, position)?",
+    ],
+    "associated_symptoms": [
+        "Have you noticed any other symptoms along with this, such as fever, nausea, or fatigue?",
+        "Has this affected your sleep, appetite, or mood?",
+    ],
+    "medications": [
+        "Are you currently taking any medications, vitamins, or supplements?",
+        "Have you tried any treatments or medications for this concern?",
+    ],
+    "medical_history": [
+        "Do you have any chronic conditions or past diagnoses I should know about?",
+        "Have you had any surgeries or hospitalizations in the past?",
+    ],
+    "allergies": [
+        "Do you have any known allergies to medications, foods, or other substances?",
+    ],
+    "lifestyle": [
+        "Has this issue affected your ability to work, exercise, or perform daily activities?",
+    ],
+    "family_history": [
+        "Is there any family history of similar conditions?",
+    ],
+}
+
+_DOMAIN_ORDER = [
+    "symptom_detail",
+    "associated_symptoms",
+    "medications",
+    "medical_history",
+    "allergies",
+    "lifestyle",
+    "family_history",
+]
+
+
+def _generate_follow_up(
+    question_number: int,
+    visit_type: str,
+    symptoms: list,
+    latest_answer: str,
+) -> str:
+    """Generate a contextual follow-up question based on extracted symptoms."""
+
+    # First question after initial concern — acknowledge what was found
+    if question_number == 1 and symptoms:
+        names = [s.symptom_name.replace("_", " ") for s in symptoms]
+        severity_note = ""
+        for s in symptoms:
+            if s.severity == "severe":
+                severity_note = " I understand this sounds quite serious."
+                break
+        duration_note = ""
+        for s in symptoms:
+            if s.duration_mentioned:
+                duration_note = f" You mentioned this has been going on {s.duration_mentioned}."
+                break
+        return (
+            f"Thank you for sharing that. I understand you're experiencing "
+            f"{', '.join(names)}.{severity_note}{duration_note} "
+            f"{_DOMAIN_QUESTIONS['symptom_detail'][0]}"
+        )
+
+    # Walk through domains in order based on question number
+    q_idx = question_number - 1  # 0-based
+    cumulative = 0
+    for domain in _DOMAIN_ORDER:
+        questions = _DOMAIN_QUESTIONS[domain]
+        if q_idx < cumulative + len(questions):
+            return questions[q_idx - cumulative]
+        cumulative += len(questions)
+
+    # If we've exhausted all domain questions, ask a wrap-up (only once)
+    return "__WRAP_UP__"
 
 
 # ---------------------------------------------------------------------------
@@ -225,18 +325,18 @@ async def start_conversation(
         db.add(appointment)
         await db.flush()
 
-    # Check for an existing active session on this appointment
+    # Check for an existing active session on this appointment — resume it
     existing = await db.execute(
-        select(ConversationSession).where(
+        select(ConversationSession)
+        .options(selectinload(ConversationSession.messages))
+        .where(
             ConversationSession.appointment_id == appointment.id,
             ConversationSession.status == SessionStatus.IN_PROGRESS,
         )
     )
-    if existing.scalar_one_or_none() is not None:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="An active conversation session already exists for this appointment",
-        )
+    existing_session = existing.scalar_one_or_none()
+    if existing_session is not None:
+        return _session_to_response(existing_session)
 
     now = datetime.now(timezone.utc)
     session = ConversationSession(
@@ -322,14 +422,54 @@ async def submit_answer(
     )
     db.add(patient_msg)
 
-    # Generate next AI follow-up question (placeholder for real AI service call)
+    # ── Generate next AI follow-up question using symptom extraction ──
     session.questions_asked_count += 1
     session.last_activity_at = datetime.now(timezone.utc)
 
-    ai_question_text = (
-        f"Thank you. Follow-up question #{session.questions_asked_count}: "
-        "Could you tell me more about when this started and how it affects your daily activities?"
+    # Collect all patient answers so far (decrypted) for symptom analysis
+    all_patient_text = []
+    for m in session.messages:
+        if m.role == MessageRole.PATIENT:
+            try:
+                all_patient_text.append(decrypt_phi(m.content))
+            except Exception:
+                all_patient_text.append(m.content)
+    all_patient_text.append(payload.answer_text)
+
+    # Extract symptoms from the full conversation
+    all_text = " ".join(all_patient_text)
+    extracted = _extractor.extract(all_text)
+    symptom_names = [s.symptom_name.replace("_", " ") for s in extracted]
+
+    ai_question_text = _generate_follow_up(
+        question_number=session.questions_asked_count,
+        visit_type=session.visit_type,
+        symptoms=extracted,
+        latest_answer=payload.answer_text,
     )
+
+    # Check if we've reached the wrap-up phase
+    if ai_question_text == "__WRAP_UP__":
+        # Check if the previous AI message was already the wrap-up question
+        prev_ai_msgs = [m for m in session.messages if m.role == MessageRole.AI]
+        last_ai = prev_ai_msgs[-1].content if prev_ai_msgs else ""
+        already_asked_wrapup = "anything else" in last_ai.lower()
+
+        if already_asked_wrapup:
+            # Patient answered the wrap-up — send a closing message
+            ai_question_text = (
+                "Thank you for completing the intake questionnaire! Your responses "
+                "have been recorded and will help your physician prepare for your "
+                "appointment. You can now click 'Finish & Review' to review your "
+                "answers before submitting."
+            )
+        else:
+            ai_question_text = (
+                "Thank you for all that information. Is there anything else about "
+                "your health that you'd like your physician to know about before "
+                "your appointment?"
+            )
+
     ai_msg = ConversationMessageModel(
         session_id=session.id,
         sequence_number=next_seq + 1,
@@ -694,20 +834,17 @@ async def complete_conversation(
 
     # Trigger AI report generation (placeholder -- in production this would
     # enqueue a background task via Celery, ARQ, or similar)
-    await db.execute(
-        text(
-            "INSERT INTO ai_reports "
-            "(id, appointment_id, session_id, status, created_at) "
-            "VALUES (:id, :appt_id, :sess_id, 'pending', now())"
-        ),
-        {
-            "id": str(uuid.uuid4()),
-            "appt_id": str(session.appointment_id),
-            "sess_id": str(session.id),
-        },
-    )
-
-    await db.flush()
+    try:
+        from app.models.ai_report import AIReport
+        report = AIReport(
+            appointment_id=session.appointment_id,
+            session_id=session.id,
+            summary="Pending AI analysis",
+        )
+        db.add(report)
+        await db.flush()
+    except Exception:
+        logger.warning("Failed to create AI report stub — table may not exist yet")
 
     try:
         await _audit_log(

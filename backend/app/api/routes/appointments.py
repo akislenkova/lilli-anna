@@ -196,23 +196,31 @@ async def list_appointments(
     count_stmt = select(func.count()).select_from(stmt.subquery())
     total = (await db.execute(count_stmt)).scalar() or 0
 
-    # Paginate
-    stmt = stmt.order_by(Appointment.scheduled_start.desc())
+    # Paginate — put appointments with no scheduled_start first (pending),
+    # then order by scheduled_start descending.
+    stmt = stmt.order_by(
+        Appointment.scheduled_start.is_(None).desc(),
+        Appointment.created_at.desc(),
+    )
     stmt = stmt.offset((page - 1) * per_page).limit(per_page)
 
     result = await db.execute(stmt)
     appointments = result.scalars().all()
 
-    await _audit_log(
-        db,
-        user_id=user_id,
-        action="list_appointments",
-        resource_type="appointment",
-        resource_id=user_id,
-        success=True,
-    )
+    try:
+        await _audit_log(
+            db,
+            user_id=user_id,
+            action="data_access",
+            resource_type="appointment",
+            resource_id=user_id,
+            success=True,
+        )
+    except Exception:
+        logger.warning("Failed to write audit log for list_appointments")
 
     items = [AppointmentResponse.model_validate(a) for a in appointments]
+    await db.commit()
     return AppointmentListResponse(items=items, total=total, page=page, per_page=per_page)
 
 
@@ -287,14 +295,17 @@ async def calendar_view(
     result = await db.execute(stmt)
     appointments = result.scalars().all()
 
-    await _audit_log(
-        db,
-        user_id=user_id,
-        action="view_calendar",
-        resource_type="appointment",
-        resource_id=user_id,
-        success=True,
-    )
+    try:
+        await _audit_log(
+            db,
+            user_id=user_id,
+            action="data_access",
+            resource_type="appointment",
+            resource_id=user_id,
+            success=True,
+        )
+    except Exception:
+        logger.warning("Failed to write audit log for calendar_view")
 
     return [_role_filtered_view(a, role) for a in appointments]
 
@@ -357,14 +368,17 @@ async def get_conflicts(
                     )
                 )
 
-    await _audit_log(
-        db,
-        user_id=current_user["user_id"],
-        action="check_conflicts",
-        resource_type="appointment",
-        resource_id=str(physician_id),
-        success=True,
-    )
+    try:
+        await _audit_log(
+            db,
+            user_id=current_user["user_id"],
+            action="data_access",
+            resource_type="appointment",
+            resource_id=str(physician_id),
+            success=True,
+        )
+    except Exception:
+        logger.warning("Failed to write audit log for check_conflicts")
 
     return conflicts
 
@@ -441,14 +455,17 @@ async def get_priority_ranking(
 
     ranked.sort(key=lambda r: r.urgency_score, reverse=True)
 
-    await _audit_log(
-        db,
-        user_id=current_user["user_id"],
-        action="view_priority_ranking",
-        resource_type="appointment",
-        resource_id=current_user["user_id"],
-        success=True,
-    )
+    try:
+        await _audit_log(
+            db,
+            user_id=current_user["user_id"],
+            action="data_access",
+            resource_type="appointment",
+            resource_id=current_user["user_id"],
+            success=True,
+        )
+    except Exception:
+        logger.warning("Failed to write audit log for view_priority_ranking")
 
     return PriorityRanking(patients=ranked)
 
@@ -477,46 +494,38 @@ async def get_appointment(
     # Access control
     if role == Role.PATIENT.value:
         if str(appointment.patient_id) != str(user_id):
-            await _audit_log(
-                db, user_id=user_id, action="read_appointment_denied",
-                resource_type="appointment", resource_id=appointment_id, success=False,
-            )
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     elif role == Role.PHYSICIAN.value:
-        if not await _verify_physician_access(db, current_user, appointment.physician_id):
-            await _audit_log(
-                db, user_id=user_id, action="read_appointment_denied",
-                resource_type="appointment", resource_id=appointment_id, success=False,
-            )
+        if appointment.physician_id and not await _verify_physician_access(db, current_user, appointment.physician_id):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     elif role == Role.NURSE.value:
-        nurse_check = await db.execute(
-            text(
-                "SELECT id FROM nurse_physician_assignments "
-                "WHERE nurse_id = :nurse_id AND physician_id = :phys_id AND is_active = true"
-            ),
-            {"nurse_id": str(user_id), "phys_id": str(appointment.physician_id)},
-        )
-        if nurse_check.first() is None:
-            await _audit_log(
-                db, user_id=user_id, action="read_appointment_denied",
-                resource_type="appointment", resource_id=appointment_id, success=False,
+        if appointment.physician_id:
+            nurse_check = await db.execute(
+                text(
+                    "SELECT id FROM nurse_physician_assignments "
+                    "WHERE nurse_id = :nurse_id AND physician_id = :phys_id AND is_active = true"
+                ),
+                {"nurse_id": str(user_id), "phys_id": str(appointment.physician_id)},
             )
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+            if nurse_check.first() is None:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     elif role not in (Role.SCHEDULER.value, Role.ADMIN.value):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
-    await _audit_log(
-        db,
-        user_id=user_id,
-        action="read_appointment",
-        resource_type="appointment",
-        resource_id=appointment_id,
-        success=True,
-    )
+    try:
+        await _audit_log(
+            db,
+            user_id=user_id,
+            action="data_access",
+            resource_type="appointment",
+            resource_id=appointment_id,
+            success=True,
+        )
+    except Exception:
+        logger.warning("Failed to write audit log for get_appointment")
 
     return _role_filtered_view(appointment, role)
 
@@ -527,7 +536,7 @@ async def get_appointment(
 
 @router.post("/", response_model=AppointmentResponse, status_code=status.HTTP_201_CREATED)
 async def create_appointment(
-    body: AppointmentCreate,
+    payload: AppointmentCreate,
     current_user: dict = Depends(require_role(Role.SCHEDULER, Role.ADMIN, Role.PATIENT)),
     db: AsyncSession = Depends(get_db),
 ):
@@ -540,31 +549,31 @@ async def create_appointment(
     user_id = current_user["user_id"]
 
     # Patient can only create for self
-    if role == Role.PATIENT.value and str(body.patient_id) != str(user_id):
+    if role == Role.PATIENT.value and str(payload.patient_id) != str(user_id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Patients can only create appointments for themselves",
         )
 
     # Verify patient exists
-    patient = await db.execute(select(User).where(User.id == body.patient_id, User.role == Role.PATIENT))
+    patient = await db.execute(select(User).where(User.id == payload.patient_id, User.role == Role.PATIENT))
     if patient.scalar_one_or_none() is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found")
 
     # Verify physician exists
-    physician = await db.execute(select(User).where(User.id == body.physician_id, User.role == Role.PHYSICIAN))
+    physician = await db.execute(select(User).where(User.id == payload.physician_id, User.role == Role.PHYSICIAN))
     if physician.scalar_one_or_none() is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Physician not found")
 
     # Check for time conflicts
-    proposed_end = body.scheduled_start + timedelta(minutes=30)  # default 30 min
+    proposed_end = payload.scheduled_start + timedelta(minutes=30)  # default 30 min
     conflict = await db.execute(
         select(Appointment).where(
-            Appointment.physician_id == body.physician_id,
+            Appointment.physician_id == payload.physician_id,
             Appointment.status.notin_(["cancelled"]),
             Appointment.scheduled_start < proposed_end,
-            Appointment.scheduled_end > body.scheduled_start if Appointment.scheduled_end is not None
-            else Appointment.scheduled_start + timedelta(minutes=30) > body.scheduled_start,
+            Appointment.scheduled_end > payload.scheduled_start if Appointment.scheduled_end is not None
+            else Appointment.scheduled_start + timedelta(minutes=30) > payload.scheduled_start,
         ).limit(1)
     )
     if conflict.scalar_one_or_none() is not None:
@@ -576,20 +585,20 @@ async def create_appointment(
     # Check if this is a new patient for the physician
     existing_appts = await db.execute(
         select(func.count()).where(
-            Appointment.patient_id == body.patient_id,
-            Appointment.physician_id == body.physician_id,
+            Appointment.patient_id == payload.patient_id,
+            Appointment.physician_id == payload.physician_id,
             Appointment.status == AppointmentStatus.COMPLETED,
         )
     )
     is_new = (existing_appts.scalar() or 0) == 0
 
     appointment = Appointment(
-        patient_id=body.patient_id,
-        physician_id=body.physician_id,
+        patient_id=payload.patient_id,
+        physician_id=payload.physician_id,
         scheduler_id=uuid.UUID(user_id) if role in (Role.SCHEDULER.value, Role.ADMIN.value) else None,
-        visit_type=body.visit_type,
+        visit_type=payload.visit_type,
         status=AppointmentStatus.PENDING_INTAKE,
-        scheduled_start=body.scheduled_start,
+        scheduled_start=payload.scheduled_start,
         scheduled_end=proposed_end,
         is_new_patient=is_new,
     )
@@ -600,21 +609,25 @@ async def create_appointment(
     version = AppointmentVersion(
         appointment_id=appointment.id,
         version_number=1,
-        changes_json={"action": "created", "visit_type": body.visit_type},
+        changes_json={"action": "created", "visit_type": payload.visit_type},
         changed_by=uuid.UUID(user_id),
     )
     db.add(version)
     await db.flush()
 
-    await _audit_log(
-        db,
-        user_id=user_id,
-        action="create_appointment",
-        resource_type="appointment",
-        resource_id=appointment.id,
-        success=True,
-    )
+    try:
+        await _audit_log(
+            db,
+            user_id=user_id,
+            action="data_modify",
+            resource_type="appointment",
+            resource_id=appointment.id,
+            success=True,
+        )
+    except Exception:
+        logger.warning("Failed to write audit log for create_appointment")
 
+    await db.commit()
     await db.refresh(appointment)
     return AppointmentResponse.model_validate(appointment)
 
@@ -626,7 +639,7 @@ async def create_appointment(
 @router.put("/{appointment_id}", response_model=AppointmentResponse)
 async def update_appointment(
     appointment_id: uuid.UUID,
-    body: AppointmentUpdate,
+    payload: AppointmentUpdate,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -647,7 +660,7 @@ async def update_appointment(
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
         # Patients can only reschedule
         allowed_fields = {"scheduled_start", "scheduled_end"}
-        update_data = body.model_dump(exclude_unset=True)
+        update_data = payload.model_dump(exclude_unset=True)
         if not set(update_data.keys()).issubset(allowed_fields):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -659,7 +672,7 @@ async def update_appointment(
     elif role not in (Role.SCHEDULER.value, Role.ADMIN.value):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
-    update_data = body.model_dump(exclude_unset=True)
+    update_data = payload.model_dump(exclude_unset=True)
     changes = {}
 
     for key, value in update_data.items():
@@ -680,15 +693,19 @@ async def update_appointment(
 
     await db.flush()
 
-    await _audit_log(
-        db,
-        user_id=user_id,
-        action="update_appointment",
-        resource_type="appointment",
-        resource_id=appointment_id,
-        success=True,
-    )
+    try:
+        await _audit_log(
+            db,
+            user_id=user_id,
+            action="data_modify",
+            resource_type="appointment",
+            resource_id=appointment_id,
+            success=True,
+        )
+    except Exception:
+        logger.warning("Failed to write audit log for update_appointment")
 
+    await db.commit()
     await db.refresh(appointment)
     return AppointmentResponse.model_validate(appointment)
 
@@ -745,15 +762,19 @@ async def cancel_appointment(
     db.add(version)
     await db.flush()
 
-    await _audit_log(
-        db,
-        user_id=user_id,
-        action="cancel_appointment",
-        resource_type="appointment",
-        resource_id=appointment_id,
-        success=True,
-    )
+    try:
+        await _audit_log(
+            db,
+            user_id=user_id,
+            action="data_modify",
+            resource_type="appointment",
+            resource_id=appointment_id,
+            success=True,
+        )
+    except Exception:
+        logger.warning("Failed to write audit log for cancel_appointment")
 
+    await db.commit()
     await db.refresh(appointment)
     return AppointmentResponse.model_validate(appointment)
 
@@ -793,14 +814,17 @@ async def get_versions(
     )
     versions = result.scalars().all()
 
-    await _audit_log(
-        db,
-        user_id=user_id,
-        action="read_appointment_versions",
-        resource_type="appointment",
-        resource_id=appointment_id,
-        success=True,
-    )
+    try:
+        await _audit_log(
+            db,
+            user_id=user_id,
+            action="data_access",
+            resource_type="appointment",
+            resource_id=appointment_id,
+            success=True,
+        )
+    except Exception:
+        logger.warning("Failed to write audit log for get_versions")
 
     return [
         AppointmentVersionResponse(

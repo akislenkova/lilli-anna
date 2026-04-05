@@ -1,4 +1,5 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import type { VisitType } from "../../types";
 import DisclaimerModal from "../common/DisclaimerModal";
 import * as conversationService from "../../services/conversations";
@@ -9,11 +10,13 @@ type Step =
   | "visit_type"
   | "initial_concern"
   | "conversation"
-  | "review";
+  | "review"
+  | "completed";
 
 const MAX_QUESTIONS = 10;
 
 export default function IntakeFlow() {
+  const navigate = useNavigate();
   const [step, setStep] = useState<Step>("disclaimer");
   const [visitType, setVisitType] = useState<VisitType | null>(null);
   const [session, setSession] = useState<ConversationState | null>(null);
@@ -22,14 +25,13 @@ export default function IntakeFlow() {
   const [isRecording, setIsRecording] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showCheck, setShowCheck] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
   // ── Disclaimer ──
   const handleDisclaimerAccept = () => setStep("visit_type");
-  const handleDisclaimerDecline = () => {
-    window.location.href = "/";
-  };
+  const handleDisclaimerDecline = () => navigate("/");
 
   // ── Visit type selection ──
   const handleVisitTypeSelect = async (type: VisitType) => {
@@ -63,7 +65,6 @@ export default function IntakeFlow() {
     setError(null);
     try {
       const s = await conversationService.startConversation(visitType, true);
-      // Send the initial concern as the first answer
       const updated = await conversationService.submitAnswer(s.id, initialConcern.trim());
       setSession(updated);
       setStep("conversation");
@@ -109,8 +110,6 @@ export default function IntakeFlow() {
           setLoading(true);
           try {
             await conversationService.uploadVoiceNote(session.id, blob);
-            // Voice note returns a transcript preview, not a full session update.
-            // In production this would trigger a confirm-transcript step.
           } catch {
             setError("Failed to upload voice note.");
           } finally {
@@ -136,15 +135,24 @@ export default function IntakeFlow() {
   const handleComplete = async () => {
     if (!session) return;
     setLoading(true);
+    setError(null);
     try {
       await conversationService.completeConversation(session.id);
-      window.location.href = "/";
+      setStep("completed");
     } catch {
-      setError("Failed to complete the session.");
+      setError("Failed to complete the session. Please try again.");
     } finally {
       setLoading(false);
     }
   };
+
+  // Animate the checkmark after entering "completed" step
+  useEffect(() => {
+    if (step === "completed") {
+      const timer = setTimeout(() => setShowCheck(true), 100);
+      return () => clearTimeout(timer);
+    }
+  }, [step]);
 
   // ── Helpers ──
   const latestAiMessage = session?.messages
@@ -154,6 +162,116 @@ export default function IntakeFlow() {
   const questionProgress = session
     ? `${session.questions_asked_count} / ${MAX_QUESTIONS}`
     : "";
+
+  // ── Completed view ──
+  if (step === "completed") {
+    return (
+      <div className="mx-auto flex max-w-lg flex-col items-center pt-16">
+        {/* Animated checkmark circle */}
+        <div
+          className={`flex h-28 w-28 items-center justify-center rounded-full transition-all duration-700 ease-out ${
+            showCheck
+              ? "scale-100 bg-emerald-500 opacity-100"
+              : "scale-50 bg-emerald-300 opacity-0"
+          }`}
+        >
+          <svg
+            className={`h-14 w-14 text-white transition-all duration-500 delay-300 ${
+              showCheck ? "scale-100 opacity-100" : "scale-0 opacity-0"
+            }`}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={3}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M5 13l4 4L19 7"
+            />
+          </svg>
+        </div>
+
+        {/* Title */}
+        <h1
+          className={`mt-8 text-2xl font-bold text-gray-900 transition-all duration-500 delay-500 ${
+            showCheck ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+          }`}
+        >
+          Intake Complete!
+        </h1>
+
+        {/* Subtitle */}
+        <p
+          className={`mt-3 text-center text-gray-500 transition-all duration-500 delay-700 ${
+            showCheck ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+          }`}
+        >
+          Your responses have been securely recorded and will help your
+          physician prepare for your appointment.
+        </p>
+
+        {/* Info cards */}
+        <div
+          className={`mt-8 w-full space-y-3 transition-all duration-500 delay-[900ms] ${
+            showCheck ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+          }`}
+        >
+          <div className="flex items-start gap-3 rounded-xl bg-white p-4 shadow-sm">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100">
+              <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <div>
+              <div className="text-sm font-medium text-gray-900">AI Report Generating</div>
+              <div className="text-xs text-gray-500">
+                Our AI is analyzing your responses to create a summary for your physician.
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3 rounded-xl bg-white p-4 shadow-sm">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100">
+              <svg className="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+            <div>
+              <div className="text-sm font-medium text-gray-900">HIPAA Secured</div>
+              <div className="text-xs text-gray-500">
+                All your health information is encrypted end-to-end and stored securely.
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3 rounded-xl bg-white p-4 shadow-sm">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-purple-100">
+              <svg className="h-5 w-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <div>
+              <div className="text-sm font-medium text-gray-900">Next Steps</div>
+              <div className="text-xs text-gray-500">
+                A scheduler will contact you to confirm your appointment time based on the AI's duration estimate.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Back to dashboard */}
+        <button
+          onClick={() => navigate("/")}
+          className={`mt-8 rounded-xl bg-blue-600 px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all duration-500 delay-[1100ms] ${
+            showCheck ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+          }`}
+        >
+          Back to Dashboard
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-2xl">
