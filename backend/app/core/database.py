@@ -56,10 +56,11 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def init_db() -> None:
-    """Create all tables defined on ``Base.metadata``.
+    """Bootstrap the database for local development only.
 
-    Intended for development / test bootstrapping.  In production, use Alembic
-    migrations instead.
+    In staging/production run ``alembic upgrade head`` instead.
+    This function is intentionally left for dev convenience but must not be
+    called in production (set an env guard if needed).
     """
     from sqlalchemy import text
 

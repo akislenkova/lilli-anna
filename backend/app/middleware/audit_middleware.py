@@ -19,6 +19,7 @@ from starlette.responses import Response
 
 from app.core.config import settings
 from app.core.database import async_session_factory
+from app.models.audit import AuditAction
 from app.services.audit_service import AuditLog, AuditService
 
 logger = logging.getLogger(__name__)
@@ -56,14 +57,21 @@ class AuditMiddleware(BaseHTTPMiddleware):
         try:
             async with async_session_factory() as db:
                 audit = AuditService(db)
+                action = (
+                    AuditAction.DATA_ACCESS_DENIED
+                    if response.status_code in (401, 403)
+                    else AuditAction.DATA_ACCESS
+                )
                 await audit.log_access(
                     user_id=user_id or uuid.UUID(int=0),
                     patient_id=uuid.UUID(int=0),  # not known at middleware level
                     resource_type="http",
                     resource_id=str(uuid.UUID(int=0)),
-                    action=f"{request.method} {request.url.path}",
+                    action=action,
                     success=success,
                     details={
+                        "method": request.method,
+                        "path": request.url.path,
                         "status_code": response.status_code,
                         "elapsed_ms": elapsed_ms,
                     },

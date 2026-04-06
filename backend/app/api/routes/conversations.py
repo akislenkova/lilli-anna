@@ -1,5 +1,6 @@
 """Conversation / AI-intake session routes."""
 
+import json
 import logging
 import uuid
 from datetime import datetime, timezone
@@ -765,7 +766,7 @@ async def update_conversation(
                 "id": str(uuid.uuid4()),
                 "appt_id": str(appointment.id),
                 "ver": appointment.version,
-                "changes": '{"type": "conversation_update", "sequence": ' + str(payload.question_sequence) + '}',
+                "changes": json.dumps({"type": "conversation_update", "sequence": payload.question_sequence}),
                 "user_id": str(current_user["user_id"]),
             },
         )
