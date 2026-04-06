@@ -7,8 +7,8 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "postgresql://anilla:anilla@localhost:5432/anilla"
 
-    # JWT / Auth
-    SECRET_KEY: str = "CHANGE-ME-in-production-use-openssl-rand-hex-32"
+    # JWT / Auth — must be set via .env in all environments
+    SECRET_KEY: str
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
@@ -16,7 +16,8 @@ class Settings(BaseSettings):
     SESSION_TIMEOUT_MINUTES: int = 15
 
     # AES-256 encryption key for PHI fields (base64-encoded 32-byte key)
-    ENCRYPTION_KEY: str = "lAO2oizmHDDzVCFW__ketdDkaVkKRocUmfk0lLCOjCw="
+    # Generate with: python -c "import secrets, base64; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())"
+    ENCRYPTION_KEY: str
 
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:5173"]
