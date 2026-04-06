@@ -50,7 +50,7 @@ class PatientAnswer(BaseModel):
 
     session_id: Optional[UUID] = None
     question_sequence: Optional[int] = Field(default=None, ge=0)
-    answer_text: str = Field(..., min_length=1)
+    answer_text: str = Field(..., min_length=1, max_length=5000)
 
 
 class VoiceNoteUpload(BaseModel):
@@ -64,7 +64,7 @@ class TranscriptConfirmation(BaseModel):
     """Patient confirms or corrects the AI-generated transcript."""
 
     session_id: Optional[UUID] = None
-    transcript_text: str = Field(..., min_length=1)
+    transcript_text: str = Field(..., min_length=1, max_length=10000)
     confirmed: bool
 
 

@@ -9,11 +9,12 @@ import uuid
 from datetime import datetime, timezone
 from typing import Union
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.limiter import limiter
 from app.core.security import (
     Role,
     create_access_token,
@@ -69,7 +70,8 @@ async def _audit_log(
 # ---------------------------------------------------------------------------
 
 @router.post("/login", response_model=TokenResponse)
-async def login(credentials: LoginRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit("10/minute")
+async def login(request: Request, credentials: LoginRequest, db: AsyncSession = Depends(get_db)):
     """Authenticate user with email and password, returning a JWT bearer token."""
 
     result = await db.execute(select(User).where(User.email == credentials.email))
@@ -130,7 +132,9 @@ async def login(credentials: LoginRequest, db: AsyncSession = Depends(get_db)):
 # ---------------------------------------------------------------------------
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("5/minute")
 async def register(
+    request: Request,
     user_in: UserCreate,
     db: AsyncSession = Depends(get_db),
 ):
