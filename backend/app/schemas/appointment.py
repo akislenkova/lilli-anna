@@ -41,8 +41,12 @@ class AppointmentResponse(BaseModel):
     scheduled_start: Optional[datetime] = None
     scheduled_end: Optional[datetime] = None
     ai_suggested_duration: Optional[int] = None
+    ai_confidence: Optional[float] = None
+    ai_duration_range_min: Optional[int] = None
+    ai_duration_range_max: Optional[int] = None
     scheduler_approved_duration: Optional[int] = None
     scheduler_override_reason: Optional[str] = None
+    is_new_patient: Optional[bool] = None
     created_at: datetime
     updated_at: datetime
 

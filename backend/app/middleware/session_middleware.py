@@ -65,7 +65,7 @@ class SessionMiddleware(BaseHTTPMiddleware):
                 timeout_seconds = settings.SESSION_TIMEOUT_MINUTES * 60
 
                 if elapsed > timeout_seconds:
-                    # Session expired
+                    # Session expired — clear it so a fresh login works
                     _active_sessions.pop(session_key, None)
                     logger.info(
                         "session expired (inactivity) | user=%s role=%s idle=%.0fs",
@@ -73,34 +73,21 @@ class SessionMiddleware(BaseHTTPMiddleware):
                         role,
                         elapsed,
                     )
-                    return JSONResponse(
-                        status_code=401,
-                        content={
-                            "detail": "Session expired due to inactivity. Please re-authenticate.",
-                            "code": "SESSION_TIMEOUT",
-                        },
-                    )
+                    # Don't block — let the request through and create a new session below
 
-                # Enforce single concurrent session
-                if (
+                elif (
                     session_token
                     and existing["session_token"] != session_token
                 ):
-                    logger.warning(
-                        "concurrent session rejected | user=%s role=%s",
+                    # Mismatched token — the user likely logged in again from
+                    # another tab or client.  Replace the old session rather
+                    # than blocking, since the JWT is still valid.
+                    logger.info(
+                        "replacing stale session | user=%s role=%s",
                         user_id,
                         role,
                     )
-                    return JSONResponse(
-                        status_code=409,
-                        content={
-                            "detail": (
-                                "Another active session exists for this user and role. "
-                                "Please log out of the other session first."
-                            ),
-                            "code": "CONCURRENT_SESSION",
-                        },
-                    )
+                    _active_sessions.pop(session_key, None)
 
         # ----- Process request ------------------------------------------
         response = await call_next(request)

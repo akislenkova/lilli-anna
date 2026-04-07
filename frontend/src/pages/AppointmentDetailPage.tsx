@@ -113,8 +113,8 @@ export function AppointmentDetailPage() {
         </dl>
       </div>
 
-      {user?.role === "physician" && report && (
-        <PhysicianAppointmentView appointment={appointment} report={report} />
+      {user?.role === "physician" && (
+        <PhysicianAppointmentView appointment={appointment} />
       )}
 
       {user?.role === "scheduler" && (

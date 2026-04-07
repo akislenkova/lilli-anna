@@ -702,6 +702,56 @@ async def get_conversation(
 
 
 # ---------------------------------------------------------------------------
+# GET /conversations/by-appointment/{appointment_id}
+# ---------------------------------------------------------------------------
+
+@router.get("/by-appointment/{appointment_id}", response_model=ConversationResponse)
+async def get_conversation_by_appointment(
+    appointment_id: uuid.UUID,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Retrieve the conversation transcript for an appointment.
+
+    Accessible by the patient (own appointment), assigned/covering physician,
+    nurses assigned to the physician, schedulers, and admins.
+    """
+    # Find the most recent completed session for this appointment
+    result = await db.execute(
+        select(ConversationSession)
+        .options(selectinload(ConversationSession.messages))
+        .where(ConversationSession.appointment_id == appointment_id)
+        .order_by(ConversationSession.created_at.desc())
+        .limit(1)
+    )
+    session = result.scalar_one_or_none()
+
+    if session is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No conversation found for this appointment",
+        )
+
+    # Verify access using the existing helper
+    await _get_session_with_access(db, session.id, current_user)
+
+    try:
+        await _audit_log(
+            db,
+            user_id=current_user["user_id"],
+            action="data_access",
+            resource_type="conversation_session",
+            resource_id=session.id,
+            success=True,
+        )
+    except Exception:
+        logger.warning("Failed to write audit log for get_conversation_by_appointment")
+    await db.commit()
+
+    return _session_to_response(session)
+
+
+# ---------------------------------------------------------------------------
 # PUT /conversations/{session_id}/update
 # ---------------------------------------------------------------------------
 
@@ -825,22 +875,64 @@ async def complete_conversation(
     session.completed_at = now
     session.last_activity_at = now
 
-    # Update the appointment status
+    # ── Analyse the conversation for duration estimation ──
+    all_patient_text = []
+    for m in session.messages:
+        if m.role == MessageRole.PATIENT:
+            try:
+                all_patient_text.append(decrypt_phi(m.content))
+            except Exception:
+                all_patient_text.append(m.content)
+
+    full_text = " ".join(all_patient_text)
+    extracted = _extractor.extract(full_text)
+
+    # Duration estimation based on symptom count, severity, and visit type
+    base_minutes = 15 if session.visit_type == "yearly_checkup" else 20
+    symptom_count = len(extracted)
+    severe_count = sum(1 for s in extracted if s.severity == "severe")
+    moderate_count = sum(1 for s in extracted if s.severity == "moderate")
+
+    suggested = base_minutes + (symptom_count * 3) + (severe_count * 7) + (moderate_count * 3)
+    suggested = max(15, min(suggested, 90))  # clamp 15-90 min
+
+    # Confidence based on how much info we gathered
+    questions_ratio = session.questions_asked_count / max(session.max_questions, 1)
+    confidence = round(0.5 + (questions_ratio * 0.3) + (min(symptom_count, 3) * 0.07), 2)
+    confidence = min(confidence, 0.95)
+
+    range_min = max(15, suggested - 10)
+    range_max = min(90, suggested + 10)
+
+    # Build a summary from extracted symptoms
+    symptom_names = [s.symptom_name.replace("_", " ") for s in extracted]
+    summary_parts = []
+    if symptom_names:
+        summary_parts.append(f"Symptoms: {', '.join(symptom_names)}.")
+    if severe_count:
+        summary_parts.append(f"{severe_count} severe symptom(s) identified.")
+    summary_parts.append(f"Estimated duration: {suggested} minutes.")
+    ai_summary = " ".join(summary_parts) if summary_parts else "Standard visit."
+
+    # Update the appointment status and AI fields
     appt_result = await db.execute(
         select(Appointment).where(Appointment.id == session.appointment_id)
     )
     appointment = appt_result.scalar_one_or_none()
     if appointment:
         appointment.status = AppointmentStatus.INTAKE_COMPLETE
+        appointment.ai_suggested_duration = suggested
+        appointment.ai_confidence = confidence
+        appointment.ai_duration_range_min = range_min
+        appointment.ai_duration_range_max = range_max
 
-    # Trigger AI report generation (placeholder -- in production this would
-    # enqueue a background task via Celery, ARQ, or similar)
+    # Create AI report stub
     try:
         from app.models.ai_report import AIReport
         report = AIReport(
             appointment_id=session.appointment_id,
             session_id=session.id,
-            summary="Pending AI analysis",
+            summary=ai_summary,
         )
         db.add(report)
         await db.flush()
