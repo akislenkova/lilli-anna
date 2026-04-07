@@ -179,6 +179,11 @@ class ConversationService:
             raise ValueError(f"Session {session_id} is not in progress")
 
         # Stub transcription
+        logger.warning(
+            "STUB: voice transcription not implemented — returning placeholder. "
+            "session=%s format=%s bytes=%d",
+            session_id, audio_format, len(audio_data),
+        )
         transcript = (
             "[Voice note transcript placeholder — "
             f"received {len(audio_data)} bytes of {audio_format} audio]"
@@ -485,6 +490,7 @@ class ConversationService:
 
         In production this would call the SymptomExtractor AI component.
         """
+        logger.warning("STUB: _extract_symptoms using keyword matching, not AI model")
         keywords = [
             "pain",
             "headache",
@@ -508,6 +514,7 @@ class ConversationService:
 
         In production this would use the AI red-flag model.
         """
+        logger.warning("STUB: _check_red_flags using pattern matching, not AI model")
         red_flags: list[dict] = []
         lower = answer_text.lower()
 
@@ -539,6 +546,7 @@ class ConversationService:
 
         In production this would call the QuestionEngine AI component.
         """
+        logger.warning("STUB: _generate_next_question using static templates, not AI model")
         if symptoms:
             return {
                 "question_text": (

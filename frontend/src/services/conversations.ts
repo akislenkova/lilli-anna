@@ -98,6 +98,15 @@ export async function getConversation(
   return normalise(data);
 }
 
+export async function getConversationByAppointment(
+  appointmentId: string,
+): Promise<ConversationState> {
+  const { data } = await api.get<ApiConversationResponse>(
+    `/conversations/by-appointment/${appointmentId}`,
+  );
+  return normalise(data);
+}
+
 export async function completeConversation(
   sessionId: string,
 ): Promise<ConversationState> {

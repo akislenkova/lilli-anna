@@ -71,6 +71,10 @@ class NotificationService:
         In production this would push to the EHR's in-basket or secure
         messaging system.  The stub logs the alert and records it.
         """
+        logger.warning(
+            "STUB: send_red_flag_alert — no real HIPAA messaging integration. "
+            "Alert recorded in audit log only."
+        )
         recipients = [f"physician:{physician.id} ({physician.full_name})"]
         if nurse is not None:
             recipients.append(f"nurse:{nurse.id} ({nurse.full_name})")

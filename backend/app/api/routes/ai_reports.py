@@ -73,19 +73,13 @@ async def _verify_appointment_access(
     user_id = current_user["user_id"]
 
     if role == Role.PATIENT.value:
-        # Patients cannot view AI reports (only physician-facing)
-        await _audit_log(
-            db, user_id=user_id, action="report_access_denied",
-            resource_type="ai_report", resource_id=appointment_id, success=False,
-        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Patients do not have access to AI reports",
         )
 
     if role == Role.PHYSICIAN.value:
-        # Must be assigned physician or covering physician
-        if str(appointment.physician_id) != str(user_id):
+        if appointment.physician_id and str(appointment.physician_id) != str(user_id):
             covering = await db.execute(
                 text(
                     "SELECT id FROM physician_coverages "
@@ -97,38 +91,25 @@ async def _verify_appointment_access(
                 {"cov_id": str(user_id), "abs_id": str(appointment.physician_id)},
             )
             if covering.first() is None:
-                await _audit_log(
-                    db, user_id=user_id, action="report_access_denied",
-                    resource_type="ai_report", resource_id=appointment_id, success=False,
-                )
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="You are not the assigned or covering physician",
                 )
-            # Log covering physician access
-            await _audit_log(
-                db, user_id=user_id, action="covering_physician_report_access",
-                resource_type="ai_report", resource_id=appointment_id, success=True,
-            )
 
     elif role == Role.NURSE.value:
-        # Must be assigned to the physician
-        nurse_check = await db.execute(
-            text(
-                "SELECT id FROM nurse_physician_assignments "
-                "WHERE nurse_id = :nurse_id AND physician_id = :phys_id AND is_active = true"
-            ),
-            {"nurse_id": str(user_id), "phys_id": str(appointment.physician_id)},
-        )
-        if nurse_check.first() is None:
-            await _audit_log(
-                db, user_id=user_id, action="report_access_denied",
-                resource_type="ai_report", resource_id=appointment_id, success=False,
+        if appointment.physician_id:
+            nurse_check = await db.execute(
+                text(
+                    "SELECT id FROM nurse_physician_assignments "
+                    "WHERE nurse_id = :nurse_id AND physician_id = :phys_id AND is_active = true"
+                ),
+                {"nurse_id": str(user_id), "phys_id": str(appointment.physician_id)},
             )
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You are not assigned to this physician",
-            )
+            if nurse_check.first() is None:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="You are not assigned to this physician",
+                )
 
     elif role not in (Role.SCHEDULER.value, Role.ADMIN.value):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
@@ -161,7 +142,7 @@ async def get_report(
     # Fetch the report
     report_row = await db.execute(
         text(
-            "SELECT id, appointment_id, session_id, status, "
+            "SELECT id, appointment_id, session_id, "
             "suggested_duration, confidence_level, duration_range_min, duration_range_max, "
             "red_flags, complexity_score, summary, full_report, "
             "probable_diagnoses, medication_interactions, created_at "
@@ -178,20 +159,17 @@ async def get_report(
             detail="No AI report found for this appointment",
         )
 
-    if report["status"] == "pending":
-        raise HTTPException(
-            status_code=status.HTTP_202_ACCEPTED,
-            detail="AI report is still being generated",
+    try:
+        await _audit_log(
+            db,
+            user_id=current_user["user_id"],
+            action="data_access",
+            resource_type="ai_report",
+            resource_id=report["id"],
+            success=True,
         )
-
-    await _audit_log(
-        db,
-        user_id=current_user["user_id"],
-        action="read_ai_report",
-        resource_type="ai_report",
-        resource_id=report["id"],
-        success=True,
-    )
+    except Exception:
+        logger.warning("Failed to write audit log for get_report")
 
     # Role-filtered response
     if role in (Role.PHYSICIAN.value, Role.ADMIN.value):
@@ -257,14 +235,17 @@ async def get_red_flags(
     )
     flags = result.mappings().all()
 
-    await _audit_log(
-        db,
-        user_id=current_user["user_id"],
-        action="read_red_flags",
-        resource_type="red_flag_alert",
-        resource_id=appointment_id,
-        success=True,
-    )
+    try:
+        await _audit_log(
+            db,
+            user_id=current_user["user_id"],
+            action="data_access",
+            resource_type="red_flag_alert",
+            resource_id=appointment_id,
+            success=True,
+        )
+    except Exception:
+        logger.warning("Failed to write audit log for get_red_flags")
 
     return [
         RedFlagAlertResponse(
@@ -333,14 +314,17 @@ async def acknowledge_red_flag(
         },
     )
 
-    await _audit_log(
-        db,
-        user_id=current_user["user_id"],
-        action="acknowledge_red_flag",
-        resource_type="red_flag_alert",
-        resource_id=flag_id,
-        success=True,
-    )
+    try:
+        await _audit_log(
+            db,
+            user_id=current_user["user_id"],
+            action="data_modify",
+            resource_type="red_flag_alert",
+            resource_id=flag_id,
+            success=True,
+        )
+    except Exception:
+        logger.warning("Failed to write audit log for acknowledge_red_flag")
 
     return RedFlagAlertResponse(
         id=flag["id"],
