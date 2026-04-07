@@ -19,8 +19,14 @@ class Settings(BaseSettings):
     # Generate with: python -c "import secrets, base64; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())"
     ENCRYPTION_KEY: str
 
-    # CORS
-    CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:5173"]
+    # CORS — add your production domain here or set via env var
+    CORS_ORIGINS: list[str] = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "https://anillahq.com",
+        "https://www.anillahq.com",
+    ]
+    FRONTEND_URL: str = "https://anillahq.com"
 
     # Epic MyChart EHR stub
     EHR_BASE_URL: str = "http://localhost:8081/ehr"
