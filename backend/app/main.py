@@ -55,6 +55,10 @@ logging.config.dictConfig(
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
+    # Seed demo patient on first run (empty database only)
+    from app.core.seed import seed_demo_data
+    async with async_session_factory() as session:
+        await seed_demo_data(session)
     yield
 
 
