@@ -1,0 +1,161 @@
+# Triage cluster definitions.
+# Each cluster lists the canonical symptom names (from SymptomExtractor)
+# and MTSamples medical_specialty values that map to it.
+# Adjust clusters here — no code changes needed.
+
+triage_clusters:
+  cardiac:
+    symptoms:
+      - chest_pain
+      - palpitations
+      - shortness_of_breath
+    mtsamples_specialties:
+      - Cardiovascular / Pulmonary
+    synthea_keywords:
+      - coronary
+      - cardiac
+      - heart
+      - arrhythmia
+      - hypertension
+      - angina
+      - infarction
+      - atrial fibrillation
+
+  respiratory:
+    symptoms:
+      - cough
+      - shortness_of_breath
+    mtsamples_specialties:
+      - Pulmonology
+    synthea_keywords:
+      - asthma
+      - copd
+      - pneumonia
+      - bronchitis
+      - respiratory
+      - lung
+      - influenza
+      - sinusitis
+
+  neurological:
+    symptoms:
+      - headache
+      - dizziness
+      - numbness_tingling
+      - vision_changes
+    mtsamples_specialties:
+      - Neurology
+      - Neurosurgery
+    synthea_keywords:
+      - migraine
+      - stroke
+      - seizure
+      - vertigo
+      - neuropathy
+      - dementia
+      - headache
+      - dizziness
+
+  musculoskeletal:
+    symptoms:
+      - back_pain
+      - joint_pain
+      - neck_pain
+      - swelling
+    mtsamples_specialties:
+      - Orthopedic
+      - Physical Medicine - Rehab
+      - Rheumatology
+    synthea_keywords:
+      - fracture
+      - arthritis
+      - sprain
+      - back pain
+      - joint
+      - muscle
+      - orthopedic
+      - osteoporosis
+      - fibromyalgia
+
+  gastrointestinal:
+    symptoms:
+      - abdominal_pain
+      - nausea
+    mtsamples_specialties:
+      - Gastroenterology
+    synthea_keywords:
+      - gastric
+      - intestinal
+      - bowel
+      - reflux
+      - ulcer
+      - colitis
+      - crohn
+      - appendicitis
+      - hernia
+      - nausea
+      - vomiting
+      - diarrhea
+
+  mental_health:
+    symptoms:
+      - anxiety
+      - depression
+      - sleep_problems
+    mtsamples_specialties:
+      - Psychiatry / Psychology
+    synthea_keywords:
+      - anxiety
+      - depression
+      - stress
+      - insomnia
+      - bipolar
+      - schizophrenia
+      - ptsd
+      - panic
+
+  dermatological:
+    symptoms:
+      - skin_rash
+      - urinary_issues
+    mtsamples_specialties:
+      - Dermatology
+      - Urology
+    synthea_keywords:
+      - rash
+      - dermatitis
+      - eczema
+      - psoriasis
+      - acne
+      - urinary
+      - bladder
+      - kidney
+
+  preventive:
+    symptoms: []
+    mtsamples_specialties:
+      - General Medicine
+      - IME-QME-Work-Comp etc.
+    synthea_keywords:
+      - wellness
+      - checkup
+      - screening
+      - immunization
+      - vaccine
+      - annual
+      - preventive
+
+# Output settings
+output:
+  path: ml/output
+  format: parquet           # parquet or csv
+  train_split: 0.7
+  val_split: 0.15
+  test_split: 0.15
+  random_seed: 42
+
+# Paths (relative to project root)
+paths:
+  backend: backend
+  mtsamples_csv: ml/data/raw/mtsamples.csv
+  synthea_output: ml/data/raw/synthea/csv
