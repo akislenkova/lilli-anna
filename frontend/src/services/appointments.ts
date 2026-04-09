@@ -41,6 +41,16 @@ export async function updateAppointment(
   return data;
 }
 
+export async function getConflicts(): Promise<unknown[]> {
+  const { data } = await api.get("/appointments/conflicts");
+  return data;
+}
+
+export async function getPriorityRanking(): Promise<unknown> {
+  const { data } = await api.get("/appointments/priority-ranking");
+  return data;
+}
+
 export async function cancelAppointment(id: string): Promise<Appointment> {
   const { data } = await api.put<Appointment>(`/appointments/${id}/cancel`);
   return data;
