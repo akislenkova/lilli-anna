@@ -47,6 +47,7 @@ export function PhysicianDashboard() {
   const redFlagAppts = appointments.filter((a) => a.red_flags && a.red_flags.length > 0);
   const needsFeedback = appointments.filter((a) => a.status === "completed" && !a.feedback_submitted);
   const pendingIntake = appointments.filter((a) => a.status === "intake_complete");
+  const newRequests = appointments.filter((a) => a.status === "pending_intake");
 
   return (
     <div className="space-y-6">
@@ -63,6 +64,25 @@ export function PhysicianDashboard() {
         <StatCard label="Red Flags" value={redFlagAppts.length} sub="require attention" color={redFlagAppts.length > 0 ? "bg-red-50 text-red-900" : "bg-gray-50 text-gray-700"} />
         <StatCard label="Feedback Due" value={needsFeedback.length} sub="completed visits" color={needsFeedback.length > 0 ? "bg-amber-50 text-amber-900" : "bg-gray-50 text-gray-700"} />
       </div>
+
+      {/* New appointment requests awaiting patient intake */}
+      {newRequests.length > 0 && (
+        <section>
+          <h2 className="text-lg font-semibold text-gray-800 mb-3">New Appointment Requests</h2>
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2">
+            {newRequests.map((appt) => (
+              <Link
+                key={appt.id}
+                to={`/appointments/${appt.id}`}
+                className="flex items-center justify-between text-sm text-amber-800 hover:text-amber-900"
+              >
+                <span>{appt.patient_name ?? `Patient #${appt.patient_id?.slice(0, 8)}`}</span>
+                <span className="text-amber-600 text-xs">Awaiting intake</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Today's schedule */}
       <section>

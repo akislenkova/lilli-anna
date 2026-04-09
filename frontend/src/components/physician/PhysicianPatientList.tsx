@@ -5,6 +5,7 @@ import type { Appointment } from "../../types";
 
 const STATUS_FILTERS = [
   { key: "", label: "All" },
+  { key: "pending_intake", label: "Pending Intake" },
   { key: "intake_complete", label: "Ready to Review" },
   { key: "scheduled", label: "Scheduled" },
   { key: "completed", label: "Completed" },

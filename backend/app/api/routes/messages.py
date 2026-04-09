@@ -72,7 +72,7 @@ class MessageResponse(BaseModel):
             content=msg.content,
             is_read=msg.is_read,
             created_at=msg.created_at.isoformat(),
-            sender_name=f"{msg.sender.first_name} {msg.sender.last_name}",
+            sender_name=msg.sender.full_name,
             sender_role=msg.sender.role.value if hasattr(msg.sender.role, "value") else str(msg.sender.role),
         )
 
