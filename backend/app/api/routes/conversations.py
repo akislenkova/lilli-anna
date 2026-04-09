@@ -1012,7 +1012,7 @@ async def complete_conversation(
     if flags:
         base_minutes += 15  # urgent/complex cases need more time
 
-    suggested = max(15, min(base_minutes, 90))
+    suggested = max(15, min(round(base_minutes / 5) * 5, 90))
 
     # Confidence based on depth of conversation (questions asked + symptom coverage)
     questions_ratio = session.questions_asked_count / max(session.max_questions, 1)
