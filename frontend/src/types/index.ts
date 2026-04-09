@@ -51,6 +51,7 @@ export interface Appointment {
   red_flags?: RedFlagAlert[];
   summary?: string;
   feedback_submitted?: boolean;
+  patient_name?: string;
   created_at: string;
   updated_at?: string;
 }

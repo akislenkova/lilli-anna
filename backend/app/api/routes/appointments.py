@@ -153,7 +153,7 @@ async def list_appointments(
         stmt = stmt.where(Appointment.patient_id == user_id)
 
     elif role == Role.PHYSICIAN.value:
-        # Own patients plus covering physician access
+        # Own patients, covering patients, and unassigned appointments
         covering_result = await db.execute(
             text(
                 "SELECT absent_physician_id FROM physician_coverages "
@@ -163,7 +163,9 @@ async def list_appointments(
             {"cov_id": str(user_id)},
         )
         covered_ids = [str(user_id)] + [str(row[0]) for row in covering_result.fetchall()]
-        stmt = stmt.where(Appointment.physician_id.in_(covered_ids))
+        stmt = stmt.where(
+            (Appointment.physician_id.in_(covered_ids)) | (Appointment.physician_id.is_(None))
+        )
 
     elif role == Role.NURSE.value:
         # Get assigned physician IDs
@@ -219,7 +221,21 @@ async def list_appointments(
     except Exception:
         logger.warning("Failed to write audit log for list_appointments")
 
-    items = [AppointmentResponse.model_validate(a) for a in appointments]
+    # Fetch patient names in one query
+    patient_ids = list({a.patient_id for a in appointments})
+    patient_names: dict[uuid.UUID, str] = {}
+    if patient_ids:
+        name_result = await db.execute(
+            select(User.id, User.full_name).where(User.id.in_(patient_ids))
+        )
+        patient_names = {row[0]: row[1] for row in name_result.fetchall()}
+
+    items = []
+    for a in appointments:
+        response = AppointmentResponse.model_validate(a)
+        response.patient_name = patient_names.get(a.patient_id)
+        items.append(response)
+
     await db.commit()
     return AppointmentListResponse(items=items, total=total, page=page, per_page=per_page)
 

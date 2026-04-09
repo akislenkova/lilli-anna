@@ -49,6 +49,8 @@ class AppointmentResponse(BaseModel):
     is_new_patient: Optional[bool] = None
     created_at: datetime
     updated_at: datetime
+    patient_name: Optional[str] = None
+    initial_reason: Optional[str] = None
 
 
 class AppointmentListResponse(BaseModel):

@@ -93,7 +93,7 @@ export function SchedulerDashboard() {
                       to={`/appointments/${appt.id}`}
                       className="text-lg font-medium text-gray-900 hover:text-blue-600"
                     >
-                      Patient #{appt.patient_id?.slice(0, 8)}
+                      {appt.patient_name ?? `Patient #${appt.patient_id?.slice(0, 8)}`}
                     </Link>
                     <p className="text-sm text-gray-500 mt-1">
                       {appt.visit_type === "yearly_checkup" ? "Yearly Checkup" : "Specific Concern"}
