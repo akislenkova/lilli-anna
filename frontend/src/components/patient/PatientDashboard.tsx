@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { listAppointments } from "../../services/appointments";
+import { SlotPicker } from "./SlotPicker";
 import type { Appointment, AppointmentStatus } from "../../types";
 
 /* ── Status badge styling ── */
@@ -63,6 +64,7 @@ const PAST_STATUSES = new Set<AppointmentStatus>(["completed", "cancelled", "no_
 export function PatientDashboard() {
   const [active, setActive] = useState<Appointment[]>([]);
   const [upcoming, setUpcoming] = useState<Appointment[]>([]);
+  const [slotPickerOpen, setSlotPickerOpen] = useState<string | null>(null);
   const [past, setPast] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -169,13 +171,37 @@ export function PatientDashboard() {
                   </div>
                 )}
                 {appt.status === "intake_complete" && (
-                  <div className="border-t border-gray-100 px-4 py-2.5">
-                    <div className="flex items-center gap-2">
-                      <div className="h-1.5 flex-1 rounded-full bg-gray-100">
-                        <div className="h-1.5 w-3/4 rounded-full bg-emerald-400" />
+                  <div className="border-t border-gray-100 px-4 py-3">
+                    {appt.scheduled_start ? (
+                      <p className="text-xs text-emerald-600 font-medium">
+                        Requested: {new Date(appt.scheduled_start).toLocaleString()} — awaiting confirmation
+                      </p>
+                    ) : slotPickerOpen === appt.id ? (
+                      <div onClick={(e) => e.preventDefault()}>
+                        <SlotPicker
+                          appointmentId={appt.id}
+                          duration={appt.ai_suggested_duration ?? 30}
+                          onBooked={(start) => {
+                            setActive((prev) =>
+                              prev.map((a) =>
+                                a.id === appt.id ? { ...a, scheduled_start: start } : a
+                              )
+                            );
+                            setSlotPickerOpen(null);
+                          }}
+                        />
                       </div>
-                      <span className="text-xs text-emerald-600 font-medium">Pending schedule</span>
-                    </div>
+                    ) : (
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setSlotPickerOpen(appt.id);
+                        }}
+                        className="text-sm text-blue-600 font-medium hover:text-blue-800"
+                      >
+                        Pick a time that works for you →
+                      </button>
+                    )}
                   </div>
                 )}
               </Link>

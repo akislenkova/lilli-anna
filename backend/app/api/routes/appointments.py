@@ -334,6 +334,70 @@ async def calendar_view(
 
 
 # ---------------------------------------------------------------------------
+# GET /appointments/available-slots
+# ---------------------------------------------------------------------------
+
+@router.get("/available-slots")
+async def get_available_slots(
+    date: str,  # YYYY-MM-DD
+    duration: int = Query(30, ge=5, le=240),
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return available appointment slots for a given date.
+
+    Generates 30-minute blocks between 8am–5pm, excluding times already
+    occupied by scheduled appointments.  Any authenticated user can call this.
+    """
+    from datetime import date as date_type
+    import pytz
+
+    try:
+        target_date = datetime.strptime(date, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="date must be YYYY-MM-DD")
+
+    # Only offer future dates
+    today = datetime.utcnow().date()
+    if target_date <= today:
+        return []
+
+    # Clinic hours: 8:00 – 17:00
+    day_start = datetime.combine(target_date, __import__("datetime").time(8, 0))
+    day_end = datetime.combine(target_date, __import__("datetime").time(17, 0))
+
+    # Fetch already-booked slots for that day
+    booked_result = await db.execute(
+        select(Appointment.scheduled_start, Appointment.scheduled_end).where(
+            Appointment.scheduled_start >= day_start,
+            Appointment.scheduled_start < day_end,
+            Appointment.status.notin_(["cancelled", "rescheduled"]),
+        )
+    )
+    booked = [(r[0], r[1]) for r in booked_result.fetchall() if r[0]]
+
+    # Generate candidate slots
+    slots = []
+    slot_start = day_start
+    while slot_start + timedelta(minutes=duration) <= day_end:
+        slot_end = slot_start + timedelta(minutes=duration)
+        # Check overlap with any booked slot
+        overlaps = any(
+            b_start < slot_end and (b_end or b_start + timedelta(minutes=30)) > slot_start
+            for b_start, b_end in booked
+        )
+        if not overlaps:
+            slots.append({
+                "start": slot_start.isoformat(),
+                "end": slot_end.isoformat(),
+                "label": slot_start.strftime("%-I:%M %p"),
+            })
+        slot_start += timedelta(minutes=30)
+
+    return slots
+
+
+# ---------------------------------------------------------------------------
 # GET /appointments/conflicts
 # ---------------------------------------------------------------------------
 

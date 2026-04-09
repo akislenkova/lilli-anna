@@ -41,6 +41,16 @@ export async function updateAppointment(
   return data;
 }
 
+export async function getAvailableSlots(
+  date: string,
+  duration?: number,
+): Promise<{ start: string; end: string; label: string }[]> {
+  const { data } = await api.get("/appointments/available-slots", {
+    params: { date, ...(duration ? { duration } : {}) },
+  });
+  return data;
+}
+
 export async function getConflicts(): Promise<unknown[]> {
   const { data } = await api.get("/appointments/conflicts");
   return data;
