@@ -924,6 +924,12 @@ async def complete_conversation(
     session.last_activity_at = now
 
     # ── Analyse the conversation for duration estimation ──
+    # Use accumulated ai_context (condition ranking + answers) for a smarter estimate
+    ctx_data: dict = session.ai_context or {}
+    all_symptoms: list[str] = list(ctx_data.get("extracted_symptoms", []))
+    all_answers: dict = dict(ctx_data.get("answers", {}))
+
+    # Also extract from full text to catch anything said before context was tracked
     all_patient_text = []
     for m in session.messages:
         if m.role == MessageRole.PATIENT:
@@ -931,36 +937,106 @@ async def complete_conversation(
                 all_patient_text.append(decrypt_phi(m.content))
             except Exception:
                 all_patient_text.append(m.content)
-
     full_text = " ".join(all_patient_text)
-    extracted = _extractor.extract(full_text)
+    for sym in _extractor.extract(full_text):
+        if sym.symptom_name not in all_symptoms:
+            all_symptoms.append(sym.symptom_name)
 
-    # Duration estimation based on symptom count, severity, and visit type
-    base_minutes = 15 if session.visit_type == "yearly_checkup" else 20
-    symptom_count = len(extracted)
-    severe_count = sum(1 for s in extracted if s.severity == "severe")
-    moderate_count = sum(1 for s in extracted if s.severity == "moderate")
+    # Rank conditions using everything we know
+    qctx = SessionContext(
+        extracted_symptoms=all_symptoms,
+        previous_questions=ctx_data.get("asked_question_ids", []),
+        previous_answers=all_answers,
+    )
+    condition_scores = _engine._rank_conditions(qctx)
+    top_condition = condition_scores[0][0] if condition_scores else None
 
-    suggested = base_minutes + (symptom_count * 3) + (severe_count * 7) + (moderate_count * 3)
-    suggested = max(15, min(suggested, 90))  # clamp 15-90 min
+    # Base duration by condition — derived from typical primary-care visit lengths
+    _CONDITION_DURATIONS: dict[str, int] = {
+        "major_depressive_disorder": 40,
+        "generalized_anxiety_disorder": 35,
+        "panic_disorder": 30,
+        "bipolar_disorder": 50,
+        "ptsd": 45,
+        "adjustment_disorder": 30,
+        "herniated_disc": 30,
+        "sciatica": 30,
+        "spinal_stenosis": 35,
+        "lumbar_strain": 20,
+        "cervical_strain": 20,
+        "osteoarthritis": 25,
+        "rheumatoid_arthritis": 35,
+        "fibromyalgia": 40,
+        "angina_pectoris": 40,
+        "acute_coronary_syndrome": 60,
+        "atrial_fibrillation": 40,
+        "heart_failure": 50,
+        "pulmonary_embolism": 60,
+        "asthma": 25,
+        "copd_exacerbation": 35,
+        "pneumonia": 30,
+        "diabetes_mellitus": 30,
+        "hypothyroidism": 25,
+        "hyperthyroidism": 25,
+        "hypertension": 20,
+        "urinary_tract_infection": 15,
+        "upper_respiratory_infection": 15,
+        "migraine": 25,
+        "tension_headache": 20,
+        "sleep_apnea": 30,
+        "insomnia": 25,
+        "irritable_bowel_syndrome": 25,
+        "gastroesophageal_reflux": 20,
+    }
 
-    # Confidence based on how much info we gathered
+    if session.visit_type == "yearly_checkup":
+        base_minutes = 40  # annual physicals are always longer
+    elif top_condition:
+        base_minutes = _CONDITION_DURATIONS.get(top_condition, 20)
+    else:
+        base_minutes = 20
+
+    # Adjust for number of distinct symptom clusters (comorbidities)
+    extra_symptoms = max(0, len(all_symptoms) - 1)
+    base_minutes += extra_symptoms * 5
+
+    # Adjust for positive answers to serious questions (each "yes" = more to discuss)
+    yes_count = sum(
+        1 for v in all_answers.values()
+        if v is True or (isinstance(v, str) and v.strip().lower() in ("yes", "y"))
+    )
+    base_minutes += yes_count * 2
+
+    # Check for any red flags detected during the session
+    flags = _engine.check_red_flags(all_symptoms, all_answers)
+    if flags:
+        base_minutes += 15  # urgent/complex cases need more time
+
+    suggested = max(15, min(base_minutes, 90))
+
+    # Confidence based on depth of conversation (questions asked + symptom coverage)
     questions_ratio = session.questions_asked_count / max(session.max_questions, 1)
-    confidence = round(0.5 + (questions_ratio * 0.3) + (min(symptom_count, 3) * 0.07), 2)
+    symptom_count = len(all_symptoms)
+    confidence = round(0.55 + (questions_ratio * 0.25) + (min(symptom_count, 3) * 0.06), 2)
     confidence = min(confidence, 0.95)
 
-    range_min = max(15, suggested - 10)
-    range_max = min(90, suggested + 10)
+    range_spread = 5 if questions_ratio > 0.5 else 10
+    range_min = max(15, suggested - range_spread)
+    range_max = min(90, suggested + range_spread)
 
-    # Build a summary from extracted symptoms
-    symptom_names = [s.symptom_name.replace("_", " ") for s in extracted]
+    # Build a summary
+    symptom_names = [s.replace("_", " ") for s in all_symptoms]
     summary_parts = []
     if symptom_names:
         summary_parts.append(f"Symptoms: {', '.join(symptom_names)}.")
-    if severe_count:
-        summary_parts.append(f"{severe_count} severe symptom(s) identified.")
+    if top_condition:
+        summary_parts.append(f"Primary concern: {top_condition.replace('_', ' ')}.")
+    if flags:
+        summary_parts.append(f"{len(flags)} red flag(s) identified.")
     summary_parts.append(f"Estimated duration: {suggested} minutes.")
     ai_summary = " ".join(summary_parts) if summary_parts else "Standard visit."
+
+    extracted = _extractor.extract(full_text)  # kept for downstream compatibility
 
     # Update the appointment status and AI fields
     appt_result = await db.execute(
