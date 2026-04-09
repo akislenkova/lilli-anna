@@ -93,26 +93,32 @@ export function SlotPicker({ appointmentId, duration, onBooked }: Props) {
         </p>
       ) : (
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-          {slots.map((slot) => (
-            <button
-              key={slot.start}
-              onClick={() => setSelected(slot)}
-              className={`py-2 rounded-lg text-sm font-medium transition-colors ${
-                selected?.start === slot.start
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-50 text-gray-700 border border-gray-200 hover:border-blue-400 hover:text-blue-600"
-              }`}
-            >
-              {slot.label}
-            </button>
-          ))}
+          {slots.map((slot) => {
+            const localLabel = new Date(slot.start).toLocaleTimeString(undefined, {
+              hour: "numeric",
+              minute: "2-digit",
+            });
+            return (
+              <button
+                key={slot.start}
+                onClick={() => setSelected(slot)}
+                className={`py-2 rounded-lg text-sm font-medium transition-colors ${
+                  selected?.start === slot.start
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-50 text-gray-700 border border-gray-200 hover:border-blue-400 hover:text-blue-600"
+                }`}
+              >
+                {localLabel}
+              </button>
+            );
+          })}
         </div>
       )}
 
       {selected && (
         <div className="flex items-center justify-between bg-blue-50 rounded-lg p-3">
           <p className="text-sm text-blue-800 font-medium">
-            {formatDate(selectedDay)} at {selected.label}
+            {formatDate(selectedDay)} at {new Date(selected.start).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
           </p>
           <button
             onClick={handleBook}
