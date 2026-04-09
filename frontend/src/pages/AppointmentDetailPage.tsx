@@ -3,15 +3,20 @@ import { useParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { getAppointment } from "../services/appointments";
 import { getReport } from "../services/reports";
+import { getConversationByAppointment } from "../services/conversations";
 import { PhysicianAppointmentView } from "../components/physician/PhysicianAppointmentView";
 import { RedFlagBanner } from "../components/common/RedFlagBanner";
 import type { Appointment, AIReport } from "../types";
+import type { ConversationState } from "../services/conversations";
 
 export function AppointmentDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const [appointment, setAppointment] = useState<Appointment | null>(null);
   const [report, setReport] = useState<AIReport | null>(null);
+  const [nurseTranscript, setNurseTranscript] = useState<ConversationState | null>(null);
+  const [showNurseTranscript, setShowNurseTranscript] = useState(false);
+  const [loadingNurseTranscript, setLoadingNurseTranscript] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -33,6 +38,15 @@ export function AppointmentDetailPage() {
     };
     load();
   }, [id]);
+
+  useEffect(() => {
+    if (!id || user?.role !== "nurse" || !showNurseTranscript || nurseTranscript) return;
+    setLoadingNurseTranscript(true);
+    getConversationByAppointment(id)
+      .then(setNurseTranscript)
+      .catch(() => {})
+      .finally(() => setLoadingNurseTranscript(false));
+  }, [id, user?.role, showNurseTranscript, nurseTranscript]);
 
   if (loading) {
     return (
@@ -139,11 +153,77 @@ export function AppointmentDetailPage() {
         </div>
       )}
 
-      {user?.role === "nurse" && report && (
-        <div className="bg-white rounded-xl shadow p-6">
-          <h3 className="font-semibold text-gray-900 mb-3">Visit Summary</h3>
-          <p className="text-gray-700">{report.summary}</p>
-        </div>
+      {user?.role === "nurse" && (
+        <>
+          {report?.summary && (
+            <div className="bg-white rounded-xl shadow p-6">
+              <h3 className="font-semibold text-gray-900 mb-3">AI Intake Summary</h3>
+              <p className="text-gray-700 text-sm">{report.summary}</p>
+            </div>
+          )}
+
+          {/* Intake conversation — nurses can read, no medical record or Epic */}
+          <div className="bg-white rounded-xl shadow p-6">
+            <button
+              onClick={() => setShowNurseTranscript(!showNurseTranscript)}
+              className="flex items-center justify-between w-full"
+            >
+              <h3 className="text-lg font-semibold text-gray-900">Intake Conversation</h3>
+              <span className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800">
+                {showNurseTranscript ? (
+                  <>
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+                    </svg>
+                    Hide
+                  </>
+                ) : (
+                  <>
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                    Show transcript
+                  </>
+                )}
+              </span>
+            </button>
+
+            {showNurseTranscript && (
+              <div className="mt-4">
+                {loadingNurseTranscript ? (
+                  <div className="flex justify-center py-6">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
+                  </div>
+                ) : nurseTranscript && nurseTranscript.messages.length > 0 ? (
+                  <div className="space-y-3">
+                    {nurseTranscript.messages
+                      .filter((msg) => msg.role !== "system")
+                      .map((msg, i) => (
+                        <div
+                          key={i}
+                          className={`p-3 rounded-lg ${
+                            msg.role === "patient" ? "bg-blue-50 ml-8" : "bg-gray-50 mr-8"
+                          }`}
+                        >
+                          <p className="text-xs font-medium uppercase tracking-wide mb-1 text-gray-400">
+                            {msg.role === "patient" ? "Patient" : "AI"}
+                          </p>
+                          <p className="text-sm text-gray-800 whitespace-pre-wrap">{msg.content}</p>
+                        </div>
+                      ))}
+                    <p className="text-xs text-gray-400 text-center pt-2">
+                      {nurseTranscript.questions_asked_count} questions asked
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 py-4 text-center">
+                    No conversation transcript available.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </>
       )}
     </div>
   );

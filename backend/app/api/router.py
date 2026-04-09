@@ -18,6 +18,7 @@ api_router = APIRouter()
 # so we include them without adding additional prefixes here.
 api_router.include_router(auth.router)
 api_router.include_router(patients.router)
+api_router.include_router(patients._physician_router)
 api_router.include_router(conversations.router)
 api_router.include_router(appointments.router)
 api_router.include_router(ai_reports.router)

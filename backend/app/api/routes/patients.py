@@ -15,6 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import (
     Role,
@@ -404,3 +405,108 @@ async def update_own_medications(
     await db.refresh(profile)
 
     return body
+
+
+# ---------------------------------------------------------------------------
+# GET /patients/me/epic-launch  — patient sees their own MyChart record
+# ---------------------------------------------------------------------------
+
+@router.get("/epic-launch")
+async def get_epic_launch_url_patient(
+    current_user: dict = Depends(require_role(Role.PATIENT)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return the Epic MyChart URL for the authenticated patient.
+
+    Opens the patient's own MyChart record in a new browser tab.  The URL
+    is constructed from EPIC_MYCHART_BASE_URL so the clinic can point it at
+    their own Epic instance via the environment variable.
+    """
+    patient_id = await _verify_patient_or_proxy(db, current_user)
+    profile = await _get_patient_profile(db, patient_id)
+
+    # Build the MyChart deep-link.  If the patient has an MRN we include it
+    # as a hint; Epic will still require the patient to authenticate.
+    result = await db.execute(
+        select(User.medical_record_number).where(User.id == patient_id)
+    )
+    row = result.first()
+    mrn: str | None = row[0] if row else None
+
+    base = settings.EPIC_MYCHART_BASE_URL.rstrip("/")
+    url = f"{base}/Authentication/Login"
+    if mrn:
+        url = f"{base}/chart/opennote?MRN={mrn}"
+
+    await _audit_log(
+        db,
+        user_id=current_user["user_id"],
+        action="epic_launch_patient",
+        resource_type="patient_profile",
+        resource_id=profile.id,
+        success=True,
+    )
+    await db.commit()
+
+    return {"url": url, "available": bool(settings.EPIC_FHIR_BASE_URL)}
+
+
+# ---------------------------------------------------------------------------
+# GET /patients/{patient_id}/epic-launch  — physician opens chart in Epic
+# ---------------------------------------------------------------------------
+
+_physician_router = APIRouter(prefix="/patients", tags=["patients"])
+
+
+@_physician_router.get("/{patient_id}/epic-launch")
+async def get_epic_launch_url_physician(
+    patient_id: uuid.UUID,
+    current_user: dict = Depends(require_role(Role.PHYSICIAN)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return the Epic FHIR launch URL so a physician can open the patient
+    chart inside Epic.
+
+    Uses the SMART on FHIR standalone-launch pattern.  Requires
+    EPIC_FHIR_BASE_URL and EPIC_CLIENT_ID to be configured; returns
+    ``available: false`` when they are absent (e.g. local dev without Epic).
+    """
+    if not settings.EPIC_CLIENT_ID:
+        # No Epic credentials configured — tell the frontend to show a
+        # "not configured" state instead of an unusable URL.
+        return {"url": None, "available": False}
+
+    result = await db.execute(
+        select(User.medical_record_number).where(User.id == patient_id)
+    )
+    row = result.first()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    mrn: str | None = row[0]
+    base = settings.EPIC_FHIR_BASE_URL.rstrip("/")
+    fhir_r4 = f"{base}/api/FHIR/R4"
+
+    # SMART on FHIR standalone launch
+    from urllib.parse import urlencode
+    params = urlencode({
+        "response_type": "code",
+        "client_id": settings.EPIC_CLIENT_ID,
+        "redirect_uri": f"{settings.FRONTEND_URL}/epic-callback",
+        "scope": "openid fhirUser launch/patient patient/*.read",
+        "iss": fhir_r4,
+        **({"login_hint": mrn} if mrn else {}),
+    })
+    url = f"{base}/oauth2/authorize?{params}"
+
+    await _audit_log(
+        db,
+        user_id=current_user["user_id"],
+        action="epic_launch_physician",
+        resource_type="patient",
+        resource_id=patient_id,
+        success=True,
+    )
+    await db.commit()
+
+    return {"url": url, "available": True}

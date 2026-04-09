@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getMyProfile, getMyRecords, getMyMedications } from "../services/patients";
+import { getPatientEpicLaunchUrl } from "../services/epic";
 import type { PatientProfile } from "../services/patients";
 import type { Appointment } from "../types";
 
@@ -8,15 +9,24 @@ export function MedicalRecordPage() {
   const [profile, setProfile] = useState<PatientProfile | null>(null);
   const [records, setRecords] = useState<Appointment[]>([]);
   const [medications, setMedications] = useState<string[]>([]);
+  const [epicUrl, setEpicUrl] = useState<string | null>(null);
+  const [epicAvailable, setEpicAvailable] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([getMyProfile(), getMyRecords(), getMyMedications()])
-      .then(([prof, recs, meds]) => {
+    Promise.all([
+      getMyProfile(),
+      getMyRecords(),
+      getMyMedications(),
+      getPatientEpicLaunchUrl().catch(() => ({ url: null, available: false })),
+    ])
+      .then(([prof, recs, meds, epic]) => {
         setProfile(prof);
         setRecords(recs);
         setMedications(meds);
+        setEpicUrl(epic.url);
+        setEpicAvailable(epic.available);
       })
       .catch(() => setError("Unable to load your medical record. Please try again."))
       .finally(() => setLoading(false));
@@ -46,6 +56,36 @@ export function MedicalRecordPage() {
           ← Back to Dashboard
         </Link>
       </div>
+
+      {/* Epic MyChart */}
+      <section className={`rounded-xl p-5 flex items-center justify-between ${epicAvailable ? "bg-red-50 border border-red-100" : "bg-gray-50 border border-gray-100"}`}>
+        <div className="flex items-center gap-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white shadow-sm">
+            <svg className="h-5 w-5 text-red-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <div>
+            <p className="font-semibold text-gray-900 text-sm">Epic MyChart</p>
+            <p className="text-xs text-gray-500">View your full health record, test results, and care history</p>
+          </div>
+        </div>
+        {epicAvailable && epicUrl ? (
+          <a
+            href={epicUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 shrink-0 rounded-lg bg-red-700 px-4 py-2 text-sm font-medium text-white hover:bg-red-800 transition-colors"
+          >
+            Open MyChart
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+          </a>
+        ) : (
+          <span className="text-xs text-gray-400 italic shrink-0">Not configured</span>
+        )}
+      </section>
 
       {/* Profile */}
       {profile && (

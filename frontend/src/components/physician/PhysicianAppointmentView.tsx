@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { FeedbackForm } from "./FeedbackForm";
 import { getConversationByAppointment } from "../../services/conversations";
+import { getPhysicianEpicLaunchUrl } from "../../services/epic";
 import type { ConversationState } from "../../services/conversations";
 import type { Appointment } from "../../types";
 
@@ -12,6 +13,19 @@ export function PhysicianAppointmentView({ appointment }: Props) {
   const [showTranscript, setShowTranscript] = useState(false);
   const [transcript, setTranscript] = useState<ConversationState | null>(null);
   const [loadingTranscript, setLoadingTranscript] = useState(false);
+  const [epicUrl, setEpicUrl] = useState<string | null>(null);
+  const [epicAvailable, setEpicAvailable] = useState(false);
+  const [epicLoading, setEpicLoading] = useState(true);
+
+  useEffect(() => {
+    getPhysicianEpicLaunchUrl(appointment.patient_id)
+      .then(({ url, available }) => {
+        setEpicUrl(url);
+        setEpicAvailable(available);
+      })
+      .catch(() => {})
+      .finally(() => setEpicLoading(false));
+  }, [appointment.patient_id]);
 
   // Fetch transcript on first expand
   useEffect(() => {
@@ -111,6 +125,41 @@ export function PhysicianAppointmentView({ appointment }: Props) {
             </dd>
           </div>
         </dl>
+      </div>
+
+      {/* Epic Chart */}
+      <div className="bg-white rounded-xl shadow p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-50">
+              {/* Epic logo colour is red/maroon */}
+              <svg className="h-5 w-5 text-red-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-gray-900">Epic Patient Chart</h3>
+              <p className="text-xs text-gray-500">Opens the full medical record in Epic EHR</p>
+            </div>
+          </div>
+          {epicLoading ? (
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-600" />
+          ) : epicAvailable && epicUrl ? (
+            <a
+              href={epicUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 rounded-lg bg-red-700 px-4 py-2 text-sm font-medium text-white hover:bg-red-800 transition-colors"
+            >
+              Open in Epic
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </a>
+          ) : (
+            <span className="text-xs text-gray-400 italic">Epic not configured</span>
+          )}
+        </div>
       </div>
 
       {/* Conversation Transcript */}

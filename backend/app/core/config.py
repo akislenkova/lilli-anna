@@ -61,9 +61,14 @@ class Settings(BaseSettings):
             return self.model_copy(update={"CORS_ORIGINS": [*self.CORS_ORIGINS, self.FRONTEND_URL]})
         return self
 
-    # Epic MyChart EHR stub
+    # Legacy EHR stub
     EHR_BASE_URL: str = "http://localhost:8081/ehr"
     EHR_API_KEY: str = ""
+
+    # Epic FHIR / MyChart
+    EPIC_FHIR_BASE_URL: str = "https://fhir.epic.com/interconnect-fhir-oauth"
+    EPIC_CLIENT_ID: str = ""
+    EPIC_MYCHART_BASE_URL: str = "https://mychart.epic.com/MyChart"
 
     # Voice transcription stub
     TRANSCRIPTION_SERVICE_URL: str = "http://localhost:8082/transcribe"
