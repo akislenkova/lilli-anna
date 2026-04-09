@@ -195,12 +195,9 @@ async def list_appointments(
     count_stmt = select(func.count()).select_from(stmt.subquery())
     total = (await db.execute(count_stmt)).scalar() or 0
 
-    # Paginate — put appointments with no scheduled_start first (pending),
-    # then order by scheduled_start descending.
-    stmt = stmt.order_by(
-        Appointment.scheduled_start.is_(None).desc(),
-        Appointment.created_at.desc(),
-    )
+    # Paginate — order by most recently updated first so newly scheduled
+    # appointments surface to the top regardless of whether they have a time set.
+    stmt = stmt.order_by(Appointment.updated_at.desc())
     stmt = stmt.offset((page - 1) * per_page).limit(per_page)
 
     result = await db.execute(stmt)
