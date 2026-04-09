@@ -95,8 +95,11 @@ async def _verify_physician_access(
 async def _get_appointment_or_404(
     db: AsyncSession, appointment_id: uuid.UUID
 ) -> Appointment:
+    from sqlalchemy.orm import selectinload
     result = await db.execute(
-        select(Appointment).where(Appointment.id == appointment_id)
+        select(Appointment)
+        .options(selectinload(Appointment.patient))
+        .where(Appointment.id == appointment_id)
     )
     appointment = result.scalar_one_or_none()
     if appointment is None:
@@ -107,10 +110,14 @@ async def _get_appointment_or_404(
     return appointment
 
 
-def _role_filtered_view(appointment: Appointment, role: str) -> dict:
+def _role_filtered_view(appointment: Appointment, role: str, patient_name: Optional[str] = None) -> dict:
     """Return the appropriate schema based on the caller's role."""
     if role == Role.PHYSICIAN.value:
-        return AppointmentPhysicianView.model_validate(appointment).model_dump()
+        view = AppointmentPhysicianView.model_validate(appointment)
+        view.patient_name = patient_name or (
+            appointment.patient.full_name if appointment.patient else None
+        )
+        return view.model_dump()
     if role == Role.NURSE.value:
         return AppointmentNurseView.model_validate(appointment).model_dump()
     if role == Role.SCHEDULER.value:
@@ -513,7 +520,8 @@ async def get_appointment(
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     elif role == Role.PHYSICIAN.value:
-        if appointment.physician_id and not await _verify_physician_access(db, current_user, appointment.physician_id):
+        # Allow access to unassigned appointments and own/covered appointments
+        if appointment.physician_id is not None and not await _verify_physician_access(db, current_user, appointment.physician_id):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     elif role == Role.NURSE.value:

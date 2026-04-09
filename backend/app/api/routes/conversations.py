@@ -99,13 +99,16 @@ async def _get_session_with_access(
     if role == Role.PATIENT.value and str(session.patient_id) == str(user_id):
         return session
 
-    # Physician sees sessions tied to their appointments
+    # Physician sees sessions tied to their appointments (including unassigned)
     if role == Role.PHYSICIAN.value:
         appt = await db.execute(
             select(Appointment).where(Appointment.id == session.appointment_id)
         )
         appointment = appt.scalar_one_or_none()
-        if appointment and str(appointment.physician_id) == str(user_id):
+        if appointment and (
+            appointment.physician_id is None
+            or str(appointment.physician_id) == str(user_id)
+        ):
             return session
 
         # Check covering physician access
