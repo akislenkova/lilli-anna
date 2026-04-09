@@ -323,7 +323,7 @@ async def get_available_slots(
 ):
     """Return available appointment slots for a given date.
 
-    Generates 30-minute blocks between 8am–5pm (UTC), excluding times already
+    Generates 30-minute blocks between 8am–4pm (UTC), excluding times already
     occupied by scheduled appointments.  Any authenticated user can call this.
     """
     try:
@@ -335,9 +335,9 @@ async def get_available_slots(
     if target_date <= datetime.utcnow().date():
         return []
 
-    # Clinic hours 8:00–17:00 UTC, timezone-aware so they compare correctly
+    # Clinic hours 8:00–16:00 UTC, timezone-aware so they compare correctly
     day_start = datetime(target_date.year, target_date.month, target_date.day, 8, 0, tzinfo=timezone.utc)
-    day_end   = datetime(target_date.year, target_date.month, target_date.day, 17, 0, tzinfo=timezone.utc)
+    day_end   = datetime(target_date.year, target_date.month, target_date.day, 16, 0, tzinfo=timezone.utc)
 
     # Fetch already-booked slots for that day
     booked_result = await db.execute(

@@ -30,6 +30,10 @@ export default function IntakeFlow() {
   const [showCheck, setShowCheck] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const speechRecognitionRef = useRef<any>(null);
+  // Incremented every time a recording session starts or stops. Each onresult
+  // closure captures the ID at the moment recording began; if the IDs differ
+  // when the callback fires, the session has already ended and we ignore it.
+  const recordingSessionRef = useRef(0);
 
   // ── Resume existing session if appointmentId param present ──
   useEffect(() => {
@@ -97,6 +101,7 @@ export default function IntakeFlow() {
   // ── Submit an answer to the current question ──
   const handleSubmitAnswer = async () => {
     if (!session || !answer.trim()) return;
+    stopRecording();
     setLoading(true);
     setError(null);
     try {
@@ -120,6 +125,19 @@ export default function IntakeFlow() {
       return;
     }
 
+    // Advance session ID — any onresult callbacks still in flight from the
+    // previous session will see a mismatched ID and bail out immediately.
+    recordingSessionRef.current += 1;
+    const sessionId = recordingSessionRef.current;
+
+    // Kill any still-running recognition instance.
+    if (speechRecognitionRef.current) {
+      speechRecognitionRef.current.onresult = null;
+      speechRecognitionRef.current.onend = null;
+      speechRecognitionRef.current.stop();
+      speechRecognitionRef.current = null;
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const recognition = new SR() as any;
     recognition.continuous = true;
@@ -130,6 +148,9 @@ export default function IntakeFlow() {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     recognition.onresult = (event: any) => {
+      // Guard: if a newer session has started, discard this stale callback.
+      if (recordingSessionRef.current !== sessionId) return;
+
       let interim = "";
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const result = event.results[i];
@@ -147,11 +168,19 @@ export default function IntakeFlow() {
     };
 
     recognition.onerror = () => {
+      if (recordingSessionRef.current !== sessionId) return;
       setError("Microphone error. Please check permissions and try again.");
       setIsRecording(false);
     };
 
-    recognition.onend = () => setIsRecording(false);
+    recognition.onend = () => {
+      if (recordingSessionRef.current !== sessionId) return;
+      setIsRecording(false);
+    };
+
+    // Clear the field so stale text from a previous question cannot linger.
+    if (target === "concern") setInitialConcern("");
+    else setAnswer("");
 
     speechRecognitionRef.current = recognition;
     recognition.start();
@@ -159,7 +188,16 @@ export default function IntakeFlow() {
   }, []);
 
   const stopRecording = useCallback(() => {
-    speechRecognitionRef.current?.stop();
+    // Advance the session ID first — this invalidates any in-flight onresult
+    // callbacks before we even call stop(), which may dispatch final results.
+    recordingSessionRef.current += 1;
+
+    if (speechRecognitionRef.current) {
+      speechRecognitionRef.current.onresult = null;
+      speechRecognitionRef.current.onend = null;
+      speechRecognitionRef.current.stop();
+      speechRecognitionRef.current = null;
+    }
     setIsRecording(false);
   }, []);
 

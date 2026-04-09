@@ -9,6 +9,7 @@ import { AppointmentDetailPage } from "./pages/AppointmentDetailPage";
 import { AppointmentsPage } from "./pages/AppointmentsPage";
 import { ConflictsPage } from "./pages/ConflictsPage";
 import { PriorityPage } from "./pages/PriorityPage";
+import { MedicalRecordPage } from "./pages/MedicalRecordPage";
 
 function LayoutWrapper() {
   return (
@@ -44,6 +45,14 @@ export default function App() {
           <Route path="appointments/:id" element={<AppointmentDetailPage />} />
           <Route path="conflicts" element={<ConflictsPage />} />
           <Route path="priority" element={<PriorityPage />} />
+          <Route
+            path="my-record"
+            element={
+              <ProtectedRoute allowedRoles={["patient"]}>
+                <MedicalRecordPage />
+              </ProtectedRoute>
+            }
+          />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

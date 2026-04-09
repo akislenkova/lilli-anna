@@ -114,12 +114,20 @@ export function PatientDashboard() {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">My Dashboard</h1>
-        <Link
-          to="/intake"
-          className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-        >
-          Schedule New Visit
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            to="/my-record"
+            className="text-sm text-gray-600 border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            My Medical Record
+          </Link>
+          <Link
+            to="/intake"
+            className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+          >
+            Schedule New Visit
+          </Link>
+        </div>
       </div>
 
       {/* ── Active / In-Progress Appointments ── */}
