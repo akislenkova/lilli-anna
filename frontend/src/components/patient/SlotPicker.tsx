@@ -89,7 +89,7 @@ export function SlotPicker({ appointmentId, duration, onBooked }: Props) {
         </div>
       ) : slots.length === 0 ? (
         <p className="text-sm text-gray-500 text-center py-4">
-          No availability on this day. Try another day.
+          No open slots on this day — all times are booked. Try another day.
         </p>
       ) : (
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">

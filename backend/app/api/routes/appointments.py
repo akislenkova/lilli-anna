@@ -346,25 +346,21 @@ async def get_available_slots(
 ):
     """Return available appointment slots for a given date.
 
-    Generates 30-minute blocks between 8am–5pm, excluding times already
+    Generates 30-minute blocks between 8am–5pm (UTC), excluding times already
     occupied by scheduled appointments.  Any authenticated user can call this.
     """
-    from datetime import date as date_type
-    import pytz
-
     try:
         target_date = datetime.strptime(date, "%Y-%m-%d").date()
     except ValueError:
         raise HTTPException(status_code=400, detail="date must be YYYY-MM-DD")
 
     # Only offer future dates
-    today = datetime.utcnow().date()
-    if target_date <= today:
+    if target_date <= datetime.utcnow().date():
         return []
 
-    # Clinic hours: 8:00 – 17:00
-    day_start = datetime.combine(target_date, __import__("datetime").time(8, 0))
-    day_end = datetime.combine(target_date, __import__("datetime").time(17, 0))
+    # Clinic hours 8:00–17:00 UTC, timezone-aware so they compare correctly
+    day_start = datetime(target_date.year, target_date.month, target_date.day, 8, 0, tzinfo=timezone.utc)
+    day_end   = datetime(target_date.year, target_date.month, target_date.day, 17, 0, tzinfo=timezone.utc)
 
     # Fetch already-booked slots for that day
     booked_result = await db.execute(
@@ -381,16 +377,19 @@ async def get_available_slots(
     slot_start = day_start
     while slot_start + timedelta(minutes=duration) <= day_end:
         slot_end = slot_start + timedelta(minutes=duration)
-        # Check overlap with any booked slot
         overlaps = any(
             b_start < slot_end and (b_end or b_start + timedelta(minutes=30)) > slot_start
             for b_start, b_end in booked
         )
         if not overlaps:
+            hour = slot_start.hour % 12 or 12
+            minute = slot_start.minute
+            ampm = "AM" if slot_start.hour < 12 else "PM"
+            label = f"{hour}:{minute:02d} {ampm}"
             slots.append({
                 "start": slot_start.isoformat(),
                 "end": slot_end.isoformat(),
-                "label": slot_start.strftime("%-I:%M %p"),
+                "label": label,
             })
         slot_start += timedelta(minutes=30)
 
