@@ -7,6 +7,7 @@ from typing import Optional, Union
 import logging
 import uuid
 from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from typing import Optional, Union
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -335,9 +336,10 @@ async def get_available_slots(
     if target_date <= datetime.utcnow().date():
         return []
 
-    # Clinic hours 8:00–16:00 UTC, timezone-aware so they compare correctly
-    day_start = datetime(target_date.year, target_date.month, target_date.day, 8, 0, tzinfo=timezone.utc)
-    day_end   = datetime(target_date.year, target_date.month, target_date.day, 16, 0, tzinfo=timezone.utc)
+    # Clinic hours 8:00–16:00 in the clinic's local timezone
+    CLINIC_TZ = ZoneInfo("America/New_York")
+    day_start = datetime(target_date.year, target_date.month, target_date.day, 8, 0, tzinfo=CLINIC_TZ)
+    day_end   = datetime(target_date.year, target_date.month, target_date.day, 16, 0, tzinfo=CLINIC_TZ)
 
     # Fetch already-booked slots for that day
     booked_result = await db.execute(
