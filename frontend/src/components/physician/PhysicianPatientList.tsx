@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { listAppointments } from "../../services/appointments";
 import type { Appointment } from "../../types";
 
@@ -21,9 +21,10 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 export function PhysicianPatientList() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("");
+  const [filter, setFilter] = useState(searchParams.get("filter") ?? "");
 
   useEffect(() => {
     listAppointments({}).then((data) => {
@@ -54,7 +55,11 @@ export function PhysicianPatientList() {
         {STATUS_FILTERS.map((f) => (
           <button
             key={f.key}
-            onClick={() => setFilter(f.key)}
+            onClick={() => {
+              setFilter(f.key);
+              if (f.key) setSearchParams({ filter: f.key });
+              else setSearchParams({});
+            }}
             className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
               filter === f.key
                 ? "bg-blue-600 text-white"
@@ -69,6 +74,36 @@ export function PhysicianPatientList() {
       {filtered.length === 0 ? (
         <div className="bg-gray-50 rounded-xl p-8 text-center text-gray-500">
           No patients in this category.
+        </div>
+      ) : filter === "intake_complete" ? (
+        /* Checklist view for needs-review */
+        <div className="bg-white rounded-xl shadow-sm divide-y divide-gray-100">
+          {filtered.map((appt) => (
+            <Link
+              key={appt.id}
+              to={`/appointments/${appt.id}`}
+              className="flex items-center gap-4 px-5 py-4 hover:bg-emerald-50 transition-colors"
+            >
+              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-emerald-400">
+                <div className="h-2 w-2 rounded-full bg-emerald-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-gray-900">
+                  {appt.patient_name ?? `Patient #${appt.patient_id?.slice(0, 8)}`}
+                </p>
+                <p className="text-sm text-gray-500">
+                  {appt.visit_type === "yearly_checkup" ? "Yearly Checkup" : "Specific Concern"}
+                  {appt.initial_reason && ` · ${appt.initial_reason}`}
+                </p>
+              </div>
+              <div className="shrink-0 text-right">
+                {appt.ai_suggested_duration && (
+                  <p className="text-sm font-medium text-blue-700">{appt.ai_suggested_duration} min</p>
+                )}
+                <p className="text-xs text-emerald-600 font-medium">Review intake →</p>
+              </div>
+            </Link>
+          ))}
         </div>
       ) : (
         <div className="space-y-3">

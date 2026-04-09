@@ -4,14 +4,18 @@ import { listAppointments } from "../../services/appointments";
 import { RedFlagBanner } from "../common/RedFlagBanner";
 import type { Appointment } from "../../types";
 
-function StatCard({ label, value, sub, color }: { label: string; value: number | string; sub?: string; color: string }) {
-  return (
-    <div className={`rounded-xl p-5 ${color}`}>
+function StatCard({ label, value, sub, color, to }: { label: string; value: number | string; sub?: string; color: string; to?: string }) {
+  const inner = (
+    <>
       <p className="text-sm font-medium opacity-75">{label}</p>
       <p className="text-3xl font-bold mt-1">{value}</p>
       {sub && <p className="text-xs mt-1 opacity-60">{sub}</p>}
-    </div>
+    </>
   );
+  if (to) {
+    return <Link to={to} className={`block rounded-xl p-5 hover:opacity-90 transition-opacity ${color}`}>{inner}</Link>;
+  }
+  return <div className={`rounded-xl p-5 ${color}`}>{inner}</div>;
 }
 
 export function PhysicianDashboard() {
@@ -55,7 +59,7 @@ export function PhysicianDashboard() {
       {/* Stats row */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <StatCard label="Today" value={today.length} sub="appointments" color="bg-blue-50 text-blue-900" />
-        <StatCard label="Needs Review" value={pendingIntake.length} sub="intake complete" color="bg-emerald-50 text-emerald-900" />
+        <StatCard label="Needs Review" value={pendingIntake.length} sub="intake complete" color="bg-emerald-50 text-emerald-900" to="/appointments?filter=intake_complete" />
         <StatCard label="Red Flags" value={redFlagAppts.length} sub="require attention" color={redFlagAppts.length > 0 ? "bg-red-50 text-red-900" : "bg-gray-50 text-gray-700"} />
         <StatCard label="Feedback Due" value={needsFeedback.length} sub="completed visits" color={needsFeedback.length > 0 ? "bg-amber-50 text-amber-900" : "bg-gray-50 text-gray-700"} />
       </div>
