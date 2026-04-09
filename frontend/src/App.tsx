@@ -10,6 +10,7 @@ import { AppointmentsPage } from "./pages/AppointmentsPage";
 import { ConflictsPage } from "./pages/ConflictsPage";
 import { PriorityPage } from "./pages/PriorityPage";
 import { MedicalRecordPage } from "./pages/MedicalRecordPage";
+import { MessagesPage } from "./pages/MessagesPage";
 
 function LayoutWrapper() {
   return (
@@ -50,6 +51,14 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={["patient"]}>
                 <MedicalRecordPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="messages"
+            element={
+              <ProtectedRoute allowedRoles={["scheduler", "nurse", "physician"]}>
+                <MessagesPage />
               </ProtectedRoute>
             }
           />

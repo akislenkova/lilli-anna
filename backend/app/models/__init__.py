@@ -19,6 +19,7 @@ from app.models.feedback import PhysicianFeedback, SchedulerOverride, TimeAccura
 from app.models.audit import AuditAction, AuditLog
 from app.models.coverage import PhysicianCoverage
 from app.models.proxy import ProxyAuthorization, ProxyRelationship
+from app.models.message import StaffMessage
 
 __all__ = [
     "Base",
@@ -45,4 +46,5 @@ __all__ = [
     "PhysicianCoverage",
     "ProxyAuthorization",
     "ProxyRelationship",
+    "StaffMessage",
 ]

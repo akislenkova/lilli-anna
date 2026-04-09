@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { FeedbackForm } from "./FeedbackForm";
 import { getConversationByAppointment } from "../../services/conversations";
 import { getPhysicianEpicLaunchUrl } from "../../services/epic";
+import { AppointmentMessageThread } from "../common/AppointmentMessageThread";
 import type { ConversationState } from "../../services/conversations";
 import type { Appointment } from "../../types";
 
@@ -231,6 +232,9 @@ export function PhysicianAppointmentView({ appointment }: Props) {
           </div>
         )}
       </div>
+
+      {/* Staff messages */}
+      <AppointmentMessageThread appointmentId={appointment.id} />
 
       {/* Post-appointment feedback */}
       {appointment.status === "completed" && !appointment.feedback_submitted && (

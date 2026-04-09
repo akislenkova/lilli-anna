@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { MessageBell } from "./MessageBell";
 
 interface NavItem {
   label: string;
@@ -186,7 +187,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </h1>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            {(user.role === "scheduler" || user.role === "nurse" || user.role === "physician") && (
+              <MessageBell />
+            )}
             <span className="hidden text-sm text-gray-600 sm:block">
               {user.first_name} {user.last_name}
             </span>

@@ -6,6 +6,7 @@ import { getReport } from "../services/reports";
 import { getConversationByAppointment } from "../services/conversations";
 import { PhysicianAppointmentView } from "../components/physician/PhysicianAppointmentView";
 import { RedFlagBanner } from "../components/common/RedFlagBanner";
+import { AppointmentMessageThread } from "../components/common/AppointmentMessageThread";
 import type { Appointment, AIReport } from "../types";
 import type { ConversationState } from "../services/conversations";
 
@@ -223,7 +224,13 @@ export function AppointmentDetailPage() {
               </div>
             )}
           </div>
+
+          <AppointmentMessageThread appointmentId={appointment.id} />
         </>
+      )}
+
+      {user?.role === "scheduler" && (
+        <AppointmentMessageThread appointmentId={appointment.id} />
       )}
     </div>
   );

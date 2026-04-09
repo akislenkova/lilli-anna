@@ -9,6 +9,7 @@ from app.api.routes import (
     auth,
     conversations,
     feedback,
+    messages,
     patients,
 )
 
@@ -23,4 +24,5 @@ api_router.include_router(conversations.router)
 api_router.include_router(appointments.router)
 api_router.include_router(ai_reports.router)
 api_router.include_router(feedback.router)
+api_router.include_router(messages.router)
 api_router.include_router(admin.router)
