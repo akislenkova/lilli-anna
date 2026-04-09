@@ -8,6 +8,7 @@ Demo accounts
   Patient   : patient@demo.com   / demo1234
   Physician : physician@demo.com / demo1234  (Internal Medicine)
   Scheduler : scheduler@demo.com / demo1234
+  Nurse     : nurse@demo.com     / demo1234
 """
 
 import logging
@@ -39,6 +40,11 @@ _DEMO_USERS = [
         "email": "scheduler@demo.com",
         "full_name": "Jordan Mills",
         "role": Role.SCHEDULER,
+    },
+    {
+        "email": "nurse@demo.com",
+        "full_name": "Jamie Torres",
+        "role": Role.NURSE,
     },
 ]
 
@@ -77,6 +83,7 @@ async def seed_demo_data(session: AsyncSession) -> None:
         "Demo accounts created (password: %s):\n"
         "  patient@demo.com   — patient\n"
         "  physician@demo.com — physician (Internal Medicine)\n"
-        "  scheduler@demo.com — scheduler",
+        "  scheduler@demo.com — scheduler\n"
+        "  nurse@demo.com     — nurse",
         _DEMO_PASSWORD,
     )
