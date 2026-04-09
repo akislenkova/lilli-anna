@@ -59,6 +59,7 @@ class ConversationSession(TimestampMixin, Base):
     )
     visit_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     concerns_ranked: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    ai_context: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 
     questions_asked_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     max_questions: Mapped[int] = mapped_column(Integer, default=20, nullable=False)

@@ -11,12 +11,16 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.ai.question_engine import QuestionEngine, SessionContext
 from app.ai.symptom_extractor import SymptomExtractor
 from app.core.database import get_db
 from app.core.security import Role, decrypt_phi, encrypt_phi, get_current_user, require_role
+from app.models.ai_report import RedFlagAlert, RedFlagSeverity
 from app.models.appointment import Appointment, AppointmentStatus, VisitType as AppointmentVisitType
 
 _extractor = SymptomExtractor()
+_engine = QuestionEngine()
+_SEVERITY_MAP = {"critical": "emergency", "high": "urgent", "moderate": "elevated"}
 from app.models.conversation import (
     ContentType,
     ConversationMessage as ConversationMessageModel,
@@ -417,41 +421,83 @@ async def submit_answer(
     )
     db.add(patient_msg)
 
-    # ── Generate next AI follow-up question using symptom extraction ──
+    # ── Generate next AI follow-up question using QuestionEngine ──
     session.questions_asked_count += 1
     session.last_activity_at = datetime.now(timezone.utc)
 
-    # Collect all patient answers so far (decrypted) for symptom analysis
-    all_patient_text = []
-    for m in session.messages:
-        if m.role == MessageRole.PATIENT:
-            try:
-                all_patient_text.append(decrypt_phi(m.content))
-            except Exception:
-                all_patient_text.append(m.content)
-    all_patient_text.append(payload.answer_text)
+    # Load accumulated AI context (symptoms, asked question IDs, answers)
+    ctx_data: dict = session.ai_context or {}
+    all_symptoms: list[str] = list(ctx_data.get("extracted_symptoms", []))
+    asked_question_ids: list[str] = list(ctx_data.get("asked_question_ids", []))
+    all_answers: dict = dict(ctx_data.get("answers", {}))
+    last_question_id: str | None = ctx_data.get("last_question_id")
 
-    # Extract symptoms from the full conversation
-    all_text = " ".join(all_patient_text)
-    extracted = _extractor.extract(all_text)
-    symptom_names = [s.symptom_name.replace("_", " ") for s in extracted]
+    # Associate this answer with the last asked question ID
+    if last_question_id:
+        all_answers[last_question_id] = payload.answer_text
 
-    ai_question_text = _generate_follow_up(
-        question_number=session.questions_asked_count,
-        visit_type=session.visit_type,
-        symptoms=extracted,
-        latest_answer=payload.answer_text,
+    # Extract symptoms from the new answer and accumulate
+    new_symptoms = _extractor.extract(payload.answer_text)
+    for sym in new_symptoms:
+        if sym.symptom_name not in all_symptoms:
+            all_symptoms.append(sym.symptom_name)
+
+    # Red-flag check — only flag newly found patterns
+    flags = _engine.check_red_flags(all_symptoms, all_answers)
+    if flags:
+        existing_flag_descs: set[str] = set()
+        if session.appointment_id:
+            flag_result = await db.execute(
+                select(RedFlagAlert).where(
+                    RedFlagAlert.appointment_id == session.appointment_id,
+                    RedFlagAlert.patient_id == session.patient_id,
+                )
+            )
+            existing_flag_descs = {a.trigger_description for a in flag_result.scalars().all()}
+
+        for f in flags:
+            if f.trigger_description not in existing_flag_descs:
+                sev_str = _SEVERITY_MAP.get(f.severity, "elevated")
+                # Find physician from appointment for alert
+                if session.appointment_id:
+                    appt_result = await db.execute(
+                        select(Appointment).where(Appointment.id == session.appointment_id)
+                    )
+                    appt = appt_result.scalar_one_or_none()
+                    if appt and appt.physician_id:
+                        alert = RedFlagAlert(
+                            appointment_id=session.appointment_id,
+                            patient_id=session.patient_id,
+                            physician_id=appt.physician_id,
+                            trigger_description=f.trigger_description,
+                            severity=RedFlagSeverity(sev_str),
+                            session_was_completed=False,
+                        )
+                        db.add(alert)
+                        logger.warning(
+                            "red flag detected | session=%s flag=%s severity=%s",
+                            session.id, f.trigger_description, sev_str,
+                        )
+
+    # Select next question using QuestionEngine
+    qctx = SessionContext(
+        extracted_symptoms=all_symptoms,
+        previous_questions=asked_question_ids,
+        previous_answers=all_answers,
+        total_questions_asked=session.questions_asked_count,
     )
+    next_q = _engine.select_next_question(qctx)
 
-    # Check if we've reached the wrap-up phase
-    if ai_question_text == "__WRAP_UP__":
-        # Check if the previous AI message was already the wrap-up question
+    new_last_question_id: str | None = None
+    if next_q is not None:
+        asked_question_ids.append(next_q.question_id)
+        new_last_question_id = next_q.question_id
+        ai_question_text = next_q.text
+    else:
+        # No more condition-specific questions — wrap up
         prev_ai_msgs = [m for m in session.messages if m.role == MessageRole.AI]
         last_ai = prev_ai_msgs[-1].content if prev_ai_msgs else ""
-        already_asked_wrapup = "anything else" in last_ai.lower()
-
-        if already_asked_wrapup:
-            # Patient answered the wrap-up — send a closing message
+        if "anything else" in last_ai.lower():
             ai_question_text = (
                 "Thank you for completing the intake questionnaire! Your responses "
                 "have been recorded and will help your physician prepare for your "
@@ -464,6 +510,14 @@ async def submit_answer(
                 "your health that you'd like your physician to know about before "
                 "your appointment?"
             )
+
+    # Save updated AI context
+    session.ai_context = {
+        "extracted_symptoms": all_symptoms,
+        "asked_question_ids": asked_question_ids,
+        "answers": all_answers,
+        "last_question_id": new_last_question_id,
+    }
 
     ai_msg = ConversationMessageModel(
         session_id=session.id,

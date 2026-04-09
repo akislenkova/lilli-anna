@@ -367,11 +367,16 @@ CONDITION_QUESTIONS: dict[str, list[dict]] = {
         {"id": "uti_history", "text": "Have you had urinary tract infections before?", "question_type": "yes_no", "weight": 0.5},
     ],
     "major_depressive_disorder": [
+        {"id": "mdd_safety", "text": "Are you having any thoughts of hurting yourself or suicide?", "question_type": "yes_no", "weight": 0.95},
         {"id": "mdd_interest", "text": "Have you lost interest in activities you used to enjoy?", "question_type": "yes_no", "weight": 0.8},
-        {"id": "mdd_sleep", "text": "Have your sleep patterns changed significantly?", "question_type": "yes_no", "weight": 0.6},
-        {"id": "mdd_appetite", "text": "Have you noticed changes in your appetite?", "question_type": "yes_no", "weight": 0.5},
-        {"id": "mdd_concentration", "text": "Are you having difficulty concentrating or making decisions?", "question_type": "yes_no", "weight": 0.6},
         {"id": "mdd_duration", "text": "How long have you been feeling this way?", "question_type": "short_answer", "weight": 0.7},
+        {"id": "mdd_sleep", "text": "Have your sleep patterns changed — trouble falling asleep, staying asleep, or sleeping too much?", "question_type": "yes_no", "weight": 0.6},
+        {"id": "mdd_concentration", "text": "Are you having difficulty concentrating or making decisions?", "question_type": "yes_no", "weight": 0.6},
+        {"id": "mdd_energy", "text": "Do you feel persistently tired or low on energy, even after rest?", "question_type": "yes_no", "weight": 0.6},
+        {"id": "mdd_appetite", "text": "Have you noticed significant changes in your appetite or weight?", "question_type": "yes_no", "weight": 0.5},
+        {"id": "mdd_worthless", "text": "Do you find yourself feeling worthless or excessively guilty?", "question_type": "yes_no", "weight": 0.5},
+        {"id": "mdd_function", "text": "How much are these feelings affecting your work, relationships, or daily activities?", "question_type": "short_answer", "weight": 0.6},
+        {"id": "mdd_history", "text": "Have you experienced episodes like this before, or been diagnosed with depression or a mood disorder?", "question_type": "yes_no", "weight": 0.5},
     ],
     "generalized_anxiety_disorder": [
         {"id": "gad_worry", "text": "Do you find it difficult to control your worrying?", "question_type": "yes_no", "weight": 0.8},
@@ -491,7 +496,11 @@ RED_FLAG_PATTERNS: list[dict] = [
         "id": "rf_suicidal",
         "name": "Suicidal ideation",
         "symptoms": ["depression"],
-        "additional_indicators": ["suicidal thoughts", "self-harm", "hopelessness", "no reason to live"],
+        "additional_indicators": [
+            "suicidal thoughts", "self-harm", "hopelessness", "no reason to live",
+            "want to die", "end my life", "kill myself", "hurting myself",
+            "mdd_safety",  # matches question_id when patient answers "yes" to safety screen
+        ],
         "severity": "critical",
         "action": "Provide crisis hotline (988). Flag for immediate clinical review.",
     },

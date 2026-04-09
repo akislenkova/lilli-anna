@@ -16,6 +16,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.ai.question_engine import QuestionEngine, SessionContext
+from app.ai.symptom_extractor import SymptomExtractor
 from app.core.security import Role
 from app.models.ai_report import RedFlagAlert, RedFlagSeverity
 from app.models.conversation import (
@@ -121,30 +123,86 @@ class ConversationService:
         )
         self._db.add(patient_msg)
 
-        # 2. Symptom extraction (stub)
-        extracted_symptoms = self._extract_symptoms(answer_text)
+        # 2. Load accumulated AI context
+        ctx_data: dict = session.ai_context or {}
+        all_symptoms: list[str] = ctx_data.get("extracted_symptoms", [])
+        asked_question_ids: list[str] = ctx_data.get("asked_question_ids", [])
+        all_answers: dict = ctx_data.get("answers", {})
+        last_question_id: str | None = ctx_data.get("last_question_id")
 
-        # 3. Red-flag check
-        red_flags = self._check_red_flags(answer_text, extracted_symptoms)
-        if red_flags:
-            await self._handle_red_flags(session, red_flags, session_completed=False)
+        # Record patient's answer against the last question ID (if any)
+        if last_question_id:
+            all_answers[last_question_id] = answer_text
 
-        # 4. Generate next question
+        # 3. Extract symptoms from this answer and accumulate
+        new_symptoms = SymptomExtractor().extract(answer_text)
+        for sym in new_symptoms:
+            if sym.symptom_name not in all_symptoms:
+                all_symptoms.append(sym.symptom_name)
+
+        # 4. Red-flag check using real engine
+        engine = QuestionEngine()
+        flags = engine.check_red_flags(all_symptoms, all_answers)
+        if flags:
+            # De-duplicate: only raise flags not already persisted for this session
+            existing_descriptions = await self._get_existing_flag_patterns(session)
+            # Map QuestionEngine severity ("critical"/"high"/"moderate") → RedFlagSeverity enum
+            _sev_map = {"critical": "emergency", "high": "urgent", "moderate": "elevated"}
+            new_flags = [
+                {
+                    "description": f.trigger_description,
+                    "severity": _sev_map.get(f.severity, f.severity),
+                }
+                for f in flags
+                if f.trigger_description not in existing_descriptions
+            ]
+            if new_flags:
+                await self._handle_red_flags(session, new_flags, session_completed=False)
+
+        # 5. Generate next question
         session.questions_asked_count = seq
         session.last_activity_at = datetime.now(timezone.utc)
 
         if seq >= session.max_questions:
-            # Question limit reached
+            session.ai_context = {
+                "extracted_symptoms": all_symptoms,
+                "asked_question_ids": asked_question_ids,
+                "answers": all_answers,
+                "last_question_id": None,
+            }
             await self._db.flush()
             return None
 
-        next_question = self._generate_next_question(
-            visit_type=session.visit_type,
-            symptoms=extracted_symptoms,
-            question_number=seq + 1,
+        qctx = SessionContext(
+            extracted_symptoms=all_symptoms,
+            previous_questions=asked_question_ids,
+            previous_answers=all_answers,
+            total_questions_asked=seq,
         )
+        next_q = engine.select_next_question(qctx)
 
-        # Persist AI question
+        if next_q is None:
+            # No more condition-specific questions — ask a generic catch-all
+            next_question = self._get_generic_fallback(seq)
+            new_last_question_id = None
+        else:
+            asked_question_ids.append(next_q.question_id)
+            new_last_question_id = next_q.question_id
+            next_question = {
+                "question_text": next_q.text,
+                "question_type": next_q.question_type,
+                "domain": next_q.target_condition,
+            }
+
+        # 6. Persist updated AI context
+        session.ai_context = {
+            "extracted_symptoms": all_symptoms,
+            "asked_question_ids": asked_question_ids,
+            "answers": all_answers,
+            "last_question_id": new_last_question_id,
+        }
+
+        # 7. Persist AI question message
         encrypted_question = self._enc.encrypt_field(next_question["question_text"])
         ai_msg = ConversationMessage(
             session_id=session.id,
@@ -468,8 +526,21 @@ class ConversationService:
             )
 
     # ------------------------------------------------------------------
-    # Stubs for AI components
+    # Private helpers
     # ------------------------------------------------------------------
+
+    async def _get_existing_flag_patterns(self, session: ConversationSession) -> set[str]:
+        """Return matched_pattern values for red-flag alerts already created for this session."""
+        from app.models.ai_report import RedFlagAlert
+
+        stmt = select(RedFlagAlert).where(
+            RedFlagAlert.appointment_id == session.appointment_id,
+            RedFlagAlert.patient_id == session.patient_id,
+        )
+        result = await self._db.execute(stmt)
+        alerts = result.scalars().all()
+        # We store trigger_description; use it as a rough de-dup key
+        return {a.trigger_description for a in alerts}
 
     @staticmethod
     def _build_opening_message(visit_type: str) -> str:
@@ -485,79 +556,8 @@ class ConversationService:
         )
 
     @staticmethod
-    def _extract_symptoms(answer_text: str) -> list[str]:
-        """Stub symptom extractor.
-
-        In production this would call the SymptomExtractor AI component.
-        """
-        logger.warning("STUB: _extract_symptoms using keyword matching, not AI model")
-        keywords = [
-            "pain",
-            "headache",
-            "nausea",
-            "fatigue",
-            "fever",
-            "dizziness",
-            "shortness of breath",
-            "chest pain",
-            "numbness",
-            "bleeding",
-        ]
-        lower = answer_text.lower()
-        return [kw for kw in keywords if kw in lower]
-
-    @staticmethod
-    def _check_red_flags(
-        answer_text: str, symptoms: list[str]
-    ) -> list[dict]:
-        """Stub red-flag detector.
-
-        In production this would use the AI red-flag model.
-        """
-        logger.warning("STUB: _check_red_flags using pattern matching, not AI model")
-        red_flags: list[dict] = []
-        lower = answer_text.lower()
-
-        emergency_patterns = {
-            "chest pain": ("Possible cardiac event", "emergency"),
-            "suicidal": ("Suicidal ideation reported", "emergency"),
-            "self-harm": ("Self-harm ideation reported", "emergency"),
-            "can't breathe": ("Acute respiratory distress", "emergency"),
-            "shortness of breath": ("Respiratory concern", "urgent"),
-            "numbness": ("Possible neurological event", "urgent"),
-            "bleeding heavily": ("Significant bleeding reported", "urgent"),
-        }
-
-        for pattern, (description, severity) in emergency_patterns.items():
-            if pattern in lower:
-                red_flags.append(
-                    {"description": description, "severity": severity}
-                )
-
-        return red_flags
-
-    @staticmethod
-    def _generate_next_question(
-        visit_type: str | None,
-        symptoms: list[str],
-        question_number: int,
-    ) -> dict:
-        """Stub question engine.
-
-        In production this would call the QuestionEngine AI component.
-        """
-        logger.warning("STUB: _generate_next_question using static templates, not AI model")
-        if symptoms:
-            return {
-                "question_text": (
-                    f"You mentioned {', '.join(symptoms)}. "
-                    "Can you tell me more about when this started and "
-                    "how severe it has been?"
-                ),
-                "question_type": "short_answer",
-                "domain": "symptom_detail",
-            }
-
+    def _get_generic_fallback(question_number: int) -> dict:
+        """Return a generic catch-all question when no condition-specific questions remain."""
         generic_questions = [
             {
                 "question_text": "Are you currently taking any medications?",
@@ -565,7 +565,7 @@ class ConversationService:
                 "domain": "medications",
             },
             {
-                "question_text": "Do you have any known allergies?",
+                "question_text": "Do you have any known allergies to medications or foods?",
                 "question_type": "short_answer",
                 "domain": "allergies",
             },
@@ -573,6 +573,11 @@ class ConversationService:
                 "question_text": "Have you had any recent surgeries or hospitalizations?",
                 "question_type": "yes_no",
                 "domain": "medical_history",
+            },
+            {
+                "question_text": "Is there anything else you'd like your physician to know before your visit?",
+                "question_type": "short_answer",
+                "domain": "open_ended",
             },
         ]
         idx = (question_number - 1) % len(generic_questions)
