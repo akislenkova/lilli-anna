@@ -43,10 +43,12 @@ class Settings(BaseSettings):
     CORS_ORIGINS: list[str] = [
         "http://localhost:3000",
         "http://localhost:5173",
-        "https://anillahq.com",
-        "https://www.anillahq.com",
+        "https://anilla-hq.com",
+        "https://www.anilla-hq.com",
+        "https://anilla.vercel.app",
+        "https://akislenkova-lilli-anna.vercel.app",
     ]
-    FRONTEND_URL: str = "https://anillahq.com"
+    FRONTEND_URL: str = "https://anilla-hq.com"
 
     @model_validator(mode="after")
     def include_frontend_url_in_cors(self):

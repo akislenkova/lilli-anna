@@ -3,7 +3,7 @@
   "outputDirectory": "dist",
   "framework": "vite",
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://api.anillahq.com/api/:path*" },
+    { "source": "/api/:path*", "destination": "https://lilli-anna-production.up.railway.app/api/:path*" },
     { "source": "/((?!assets/).*)", "destination": "/index.html" }
   ],
   "headers": [
