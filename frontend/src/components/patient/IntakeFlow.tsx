@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import type { VisitType } from "../../types";
 import DisclaimerModal from "../common/DisclaimerModal";
 import * as conversationService from "../../services/conversations";
@@ -17,7 +17,9 @@ const MAX_QUESTIONS = 10;
 
 export default function IntakeFlow() {
   const navigate = useNavigate();
-  const [step, setStep] = useState<Step>("disclaimer");
+  const [searchParams] = useSearchParams();
+  const resumeAppointmentId = searchParams.get("appointmentId");
+  const [step, setStep] = useState<Step>(resumeAppointmentId ? "conversation" : "disclaimer");
   const [visitType, setVisitType] = useState<VisitType | null>(null);
   const [session, setSession] = useState<ConversationState | null>(null);
   const [answer, setAnswer] = useState("");
@@ -28,6 +30,23 @@ export default function IntakeFlow() {
   const [showCheck, setShowCheck] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const speechRecognitionRef = useRef<any>(null);
+
+  // ── Resume existing session if appointmentId param present ──
+  useEffect(() => {
+    if (!resumeAppointmentId) return;
+    setLoading(true);
+    conversationService.getConversationByAppointment(resumeAppointmentId)
+      .then((existing) => {
+        setSession(existing);
+        setStep(existing.status === "completed" ? "review" : "conversation");
+      })
+      .catch(() => {
+        // No session yet — fall back to full flow
+        setStep("disclaimer");
+      })
+      .finally(() => setLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resumeAppointmentId]);
 
   // ── Disclaimer ──
   const handleDisclaimerAccept = () => setStep("visit_type");

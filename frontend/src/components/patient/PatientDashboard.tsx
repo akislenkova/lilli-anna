@@ -132,7 +132,7 @@ export function PatientDashboard() {
             {active.map((appt) => (
               <Link
                 key={appt.id}
-                to={`/appointments/${appt.id}`}
+                to={appt.status === "pending_intake" ? `/intake?appointmentId=${appt.id}` : `/appointments/${appt.id}`}
                 className="block rounded-xl bg-white shadow-sm hover:shadow-md transition-shadow"
               >
                 <div className="flex items-center gap-4 p-4">
