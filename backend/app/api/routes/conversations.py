@@ -458,17 +458,16 @@ async def submit_answer(
         for f in flags:
             if f.trigger_description not in existing_flag_descs:
                 sev_str = _SEVERITY_MAP.get(f.severity, "elevated")
-                # Find physician from appointment for alert
                 if session.appointment_id:
                     appt_result = await db.execute(
                         select(Appointment).where(Appointment.id == session.appointment_id)
                     )
                     appt = appt_result.scalar_one_or_none()
-                    if appt and appt.physician_id:
+                    if appt:
                         alert = RedFlagAlert(
                             appointment_id=session.appointment_id,
                             patient_id=session.patient_id,
-                            physician_id=appt.physician_id,
+                            physician_id=appt.physician_id,  # may be None for unassigned appts
                             trigger_description=f.trigger_description,
                             severity=RedFlagSeverity(sev_str),
                             session_was_completed=False,
@@ -1050,13 +1049,31 @@ async def complete_conversation(
         appointment.ai_duration_range_min = range_min
         appointment.ai_duration_range_max = range_max
 
-    # Create AI report stub
+    # Build red flag JSON for the report
+    red_flags_data = []
+    for f in flags:
+        sev = _SEVERITY_MAP.get(f.severity, "elevated")
+        red_flags_data.append({
+            "id": str(uuid.uuid4()),
+            "trigger_description": f.trigger_description,
+            "severity": sev,
+            "acknowledged": False,
+            "session_completed": True,
+            "created_at": now.isoformat(),
+        })
+
+    # Create AI report
     try:
         from app.models.ai_report import AIReport
         report = AIReport(
             appointment_id=session.appointment_id,
             session_id=session.id,
             summary=ai_summary,
+            suggested_duration=suggested,
+            confidence_level=confidence,
+            duration_range_min=range_min,
+            duration_range_max=range_max,
+            red_flags=red_flags_data if red_flags_data else None,
         )
         db.add(report)
         await db.flush()
