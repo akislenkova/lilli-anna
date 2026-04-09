@@ -71,3 +71,10 @@ async def init_db() -> None:
         await conn.execute(
             text("ALTER TABLE appointments ALTER COLUMN physician_id DROP NOT NULL")
         )
+        # Add ai_context column if it doesn't exist yet (added in migration 001)
+        await conn.execute(
+            text(
+                "ALTER TABLE conversation_sessions "
+                "ADD COLUMN IF NOT EXISTS ai_context JSONB"
+            )
+        )
