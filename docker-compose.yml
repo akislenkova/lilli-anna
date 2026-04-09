@@ -22,9 +22,11 @@ services:
     ports:
       - "8000:8000"
     environment:
+      ENVIRONMENT: development
+      ALLOW_STAFF_SELF_REGISTRATION: "true"
       DATABASE_URL: postgresql://anilla:anilla@db:5432/anilla
       SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-Wq9k_3rlSrbu5NRv-hY2dJnKVpFvHpUY10BpJ6C708M=}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?ENCRYPTION_KEY must be set in your .env file}
       CORS_ORIGINS: '["http://localhost:3000","http://localhost:80"]'
       FRONTEND_URL: http://localhost:3000
     depends_on:
