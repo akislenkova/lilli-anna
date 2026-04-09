@@ -249,7 +249,7 @@ class TimeEstimator:
             reasoning_parts.append(f"+{chronic_min} min (chronic conditions)")
 
         total = sum(c.minutes for c in components)
-        recommended = max(10, round(total))
+        recommended = max(10, round(round(total / 5) * 5))
 
         # New patients: wider range, lower confidence
         if ctx.is_new_patient:
@@ -353,7 +353,7 @@ class TimeEstimator:
                 reasoning_parts.append(f"Feedback bias: {feedback_adj:.0f} min (often too long)")
 
         total = sum(c.minutes for c in components)
-        recommended = max(10, round(total))
+        recommended = max(10, round(round(total / 5) * 5))
 
         # Confidence scales with number of data points, capped at 0.95
         confidence = min(0.95, 0.50 + 0.08 * n)
