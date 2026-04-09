@@ -146,16 +146,7 @@ async def _get_session_with_access(
         )
         appointment = appt.scalar_one_or_none()
         if appointment:
-            # Check nurse-physician assignment (simplified: nurse linked via user table or config)
-            nurse_assignment = await db.execute(
-                text(
-                    "SELECT id FROM nurse_physician_assignments "
-                    "WHERE nurse_id = :nurse_id AND physician_id = :phys_id AND is_active = true"
-                ),
-                {"nurse_id": str(user_id), "phys_id": str(appointment.physician_id)},
-            )
-            if nurse_assignment.first() is not None:
-                return session
+            return session  # Nurses can access all appointment transcripts
 
     try:
         await _audit_log(

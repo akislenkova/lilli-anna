@@ -96,22 +96,7 @@ async def _verify_appointment_access(
                     detail="You are not the assigned or covering physician",
                 )
 
-    elif role == Role.NURSE.value:
-        if appointment.physician_id:
-            nurse_check = await db.execute(
-                text(
-                    "SELECT id FROM nurse_physician_assignments "
-                    "WHERE nurse_id = :nurse_id AND physician_id = :phys_id AND is_active = true"
-                ),
-                {"nurse_id": str(user_id), "phys_id": str(appointment.physician_id)},
-            )
-            if nurse_check.first() is None:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="You are not assigned to this physician",
-                )
-
-    elif role not in (Role.SCHEDULER.value, Role.ADMIN.value):
+    elif role not in (Role.NURSE.value, Role.SCHEDULER.value, Role.ADMIN.value):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     return appointment

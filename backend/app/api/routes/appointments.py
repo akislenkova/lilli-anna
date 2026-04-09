@@ -175,18 +175,7 @@ async def list_appointments(
         )
 
     elif role == Role.NURSE.value:
-        # Get assigned physician IDs
-        nurse_result = await db.execute(
-            text(
-                "SELECT physician_id FROM nurse_physician_assignments "
-                "WHERE nurse_id = :nurse_id AND is_active = true"
-            ),
-            {"nurse_id": str(user_id)},
-        )
-        phys_ids = [str(row[0]) for row in nurse_result.fetchall()]
-        if not phys_ids:
-            return AppointmentListResponse(items=[], total=0, page=page, per_page=per_page)
-        stmt = stmt.where(Appointment.physician_id.in_(phys_ids))
+        pass  # Nurses see all appointments (no assignment table in this version)
 
     elif role not in (Role.SCHEDULER.value, Role.ADMIN.value):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
@@ -294,20 +283,8 @@ async def calendar_view(
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
         stmt = stmt.where(Appointment.physician_id == target_phys)
     elif role == Role.NURSE.value:
-        nurse_result = await db.execute(
-            text(
-                "SELECT physician_id FROM nurse_physician_assignments "
-                "WHERE nurse_id = :nurse_id AND is_active = true"
-            ),
-            {"nurse_id": str(user_id)},
-        )
-        phys_ids = [str(row[0]) for row in nurse_result.fetchall()]
         if physician_id:
-            if str(physician_id) not in phys_ids:
-                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
             stmt = stmt.where(Appointment.physician_id == physician_id)
-        else:
-            stmt = stmt.where(Appointment.physician_id.in_(phys_ids))
     elif role not in (Role.SCHEDULER.value, Role.ADMIN.value):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     else:
@@ -587,19 +564,7 @@ async def get_appointment(
         if appointment.physician_id is not None and not await _verify_physician_access(db, current_user, appointment.physician_id):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
-    elif role == Role.NURSE.value:
-        if appointment.physician_id:
-            nurse_check = await db.execute(
-                text(
-                    "SELECT id FROM nurse_physician_assignments "
-                    "WHERE nurse_id = :nurse_id AND physician_id = :phys_id AND is_active = true"
-                ),
-                {"nurse_id": str(user_id), "phys_id": str(appointment.physician_id)},
-            )
-            if nurse_check.first() is None:
-                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
-
-    elif role not in (Role.SCHEDULER.value, Role.ADMIN.value):
+    elif role not in (Role.NURSE.value, Role.SCHEDULER.value, Role.ADMIN.value):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     try:

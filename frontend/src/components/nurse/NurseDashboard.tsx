@@ -55,7 +55,7 @@ export function NurseDashboard() {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="font-medium text-gray-900">
-                      Patient #{appt.patient_id?.slice(0, 8)}
+                      {appt.patient_name ?? `Patient #${appt.patient_id?.slice(0, 8)}`}
                     </p>
                     <p className="text-sm text-gray-500 mt-1">
                       {appt.visit_type === "yearly_checkup"
