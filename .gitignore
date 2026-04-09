@@ -19,3 +19,9 @@ frontend/node_modules/
 *.db-wal
 *.db-shm
 .claude/worktrees/
+
+# ML training data — stored in s3://anilla-ml-data
+ml/data/raw/*.csv
+ml/data/raw/*.json
+ml/data/raw/synthea/
+ml/output/
