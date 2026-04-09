@@ -54,8 +54,8 @@ logging.config.dictConfig(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    if settings.ENVIRONMENT == "development":
-        await init_db()
+    # create_all is idempotent — safe to run on every startup in all environments
+    await init_db()
 
     from app.core.seed import seed_demo_data
     async with async_session_factory() as session:
@@ -70,9 +70,9 @@ app = FastAPI(
     "and provides comprehensive reports — all HIPAA-compliant.",
     version="2.0.0",
     lifespan=lifespan,
-    docs_url=None if settings.is_production else "/docs",
-    redoc_url=None if settings.is_production else "/redoc",
-    openapi_url=None if settings.is_production else "/openapi.json",
+    docs_url=None if settings.ENVIRONMENT == "production" else "/docs",
+    redoc_url=None if settings.ENVIRONMENT == "production" else "/redoc",
+    openapi_url=None if settings.ENVIRONMENT == "production" else "/openapi.json",
 )
 
 # Rate limiter
