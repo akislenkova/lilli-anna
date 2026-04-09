@@ -12,7 +12,7 @@ Demo accounts
 
 import logging
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import Role, hash_password
@@ -44,18 +44,17 @@ _DEMO_USERS = [
 
 
 async def seed_demo_data(session: AsyncSession) -> None:
-    """Create demo accounts if the users table is empty."""
-    result = await session.execute(select(func.count()).select_from(User))
-    user_count = result.scalar() or 0
-
-    if user_count > 0:
-        logger.info("Database already has %d user(s) — skipping seed.", user_count)
-        return
-
-    logger.info("Empty database — seeding demo accounts.")
+    """Create demo accounts if they don't already exist."""
     hashed = hash_password(_DEMO_PASSWORD)
 
+    created = []
     for data in _DEMO_USERS:
+        existing = await session.execute(
+            select(User).where(User.email == data["email"])
+        )
+        if existing.scalar_one_or_none() is not None:
+            continue
+
         user = User(
             email=data["email"],
             hashed_password=hashed,
@@ -66,8 +65,13 @@ async def seed_demo_data(session: AsyncSession) -> None:
             license_number=data.get("license_number"),
         )
         session.add(user)
+        created.append(data["email"])
 
-    await session.commit()
+    if created:
+        await session.commit()
+        logger.info("Demo accounts created: %s", ", ".join(created))
+    else:
+        logger.info("All demo accounts already exist — skipping seed.")
 
     logger.info(
         "Demo accounts created (password: %s):\n"
