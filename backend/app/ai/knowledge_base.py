@@ -120,6 +120,13 @@ SYMPTOM_CONDITION_MAP: dict[str, list[tuple[str, float]]] = {
         ("ankylosing_spondylitis", 0.03),
         ("vertebral_compression_fracture", 0.02),
     ],
+    "herniated_disc": [
+        ("herniated_disc", 0.70),
+        ("spinal_stenosis", 0.15),
+        ("degenerative_disc_disease", 0.10),
+        ("sciatica", 0.30),
+        ("radiculopathy", 0.25),
+    ],
     "joint_pain": [
         ("osteoarthritis", 0.30),
         ("rheumatoid_arthritis", 0.12),

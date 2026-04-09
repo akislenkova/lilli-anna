@@ -67,6 +67,7 @@ _COLLOQUIAL_MAP: list[tuple[list[str], str]] = [
 
     # Musculoskeletal
     (["my back hurts", "back is killing me", "back ache", "backache", "lower back pain", "upper back pain", "spine pain"], "back_pain"),
+    (["herniated disk", "herniated disc", "bulging disk", "bulging disc", "slipped disk", "slipped disc", "disc herniation", "disk herniation", "pinched nerve", "sciatica", "spinal stenosis", "degenerative disc", "degenerative disk"], "herniated_disc"),
     (["joint aches", "joints hurt", "achy joints", "joint stiffness", "stiff joints", "sore joints", "arthritis pain"], "joint_pain"),
     (["neck hurts", "stiff neck", "neck is sore", "neck ache", "neck stiffness", "crick in my neck"], "neck_pain"),
     (["swollen", "swelling", "puffiness", "puffy", "bloated limb", "edema"], "swelling"),
@@ -94,7 +95,25 @@ _COLLOQUIAL_MAP: list[tuple[list[str], str]] = [
 ]
 
 # Pre-compile a flat lookup for direct canonical names
-_CANONICAL_SYMPTOMS: set[str] = set(SYMPTOM_CONDITION_MAP.keys())
+_CANONICAL_SYMPTOMS: set[str] = set(SYMPTOM_CONDITION_MAP.keys()) | {"herniated_disc"}
+
+# ---------------------------------------------------------------------------
+# Negation handling
+# ---------------------------------------------------------------------------
+# Replaces negated symptom phrases (e.g. "no fever", "don't have fever") with
+# a blank so they are not accidentally matched as positive findings.
+# ---------------------------------------------------------------------------
+
+_NEGATION_PATTERN = re.compile(
+    r"\b(?:no|not|without|don't have|doesn't have|do not have|haven't had|"
+    r"never had|denies|deny|absence of|free of)\s+\w+(?:\s+\w+){0,3}",
+    re.IGNORECASE,
+)
+
+
+def _strip_negations(text: str) -> str:
+    """Remove negated phrases so they don't match as positive symptoms."""
+    return _NEGATION_PATTERN.sub(" ", text)
 
 
 # ---------------------------------------------------------------------------
@@ -198,7 +217,7 @@ class SymptomExtractor:
         if not text or not text.strip():
             return []
 
-        text_lower = text.lower()
+        text_lower = _strip_negations(text.lower())
         found: dict[str, ExtractedSymptom] = {}
 
         # Stage 1: Identify symptoms via colloquial mapping
