@@ -26,8 +26,8 @@ export default function IntakeFlow() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showCheck, setShowCheck] = useState(false);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const speechRecognitionRef = useRef<any>(null);
 
   // ── Disclaimer ──
   const handleDisclaimerAccept = () => setStep("visit_type");
@@ -91,43 +91,56 @@ export default function IntakeFlow() {
     }
   };
 
-  // ── Voice recording ──
-  const startRecording = useCallback(async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      chunksRef.current = [];
+  // ── Voice recording (Web Speech API — real-time, browser-native) ──
+  const startRecording = useCallback((target: "concern" | "answer") => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const SR = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition;
 
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data);
-      };
+    if (!SR) {
+      setError("Voice input is not supported in this browser. Please use Chrome or Edge.");
+      return;
+    }
 
-      recorder.onstop = async () => {
-        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
-        stream.getTracks().forEach((t) => t.stop());
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const recognition = new SR() as any;
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
 
-        if (session) {
-          setLoading(true);
-          try {
-            await conversationService.uploadVoiceNote(session.id, blob);
-          } catch {
-            setError("Failed to upload voice note.");
-          } finally {
-            setLoading(false);
+    let finalTranscript = "";
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    recognition.onresult = (event: any) => {
+      let interim = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i];
+        if (result !== undefined) {
+          if (result.isFinal) {
+            finalTranscript += result[0]?.transcript ?? "";
+          } else {
+            interim += result[0]?.transcript ?? "";
           }
         }
-      };
+      }
+      const full = finalTranscript + interim;
+      if (target === "concern") setInitialConcern(full);
+      else setAnswer(full);
+    };
 
-      mediaRecorderRef.current = recorder;
-      recorder.start();
-      setIsRecording(true);
-    } catch {
-      setError("Could not access microphone. Please check permissions.");
-    }
-  }, [session]);
+    recognition.onerror = () => {
+      setError("Microphone error. Please check permissions and try again.");
+      setIsRecording(false);
+    };
+
+    recognition.onend = () => setIsRecording(false);
+
+    speechRecognitionRef.current = recognition;
+    recognition.start();
+    setIsRecording(true);
+  }, []);
 
   const stopRecording = useCallback(() => {
-    mediaRecorderRef.current?.stop();
+    speechRecognitionRef.current?.stop();
     setIsRecording(false);
   }, []);
 
@@ -385,7 +398,7 @@ export default function IntakeFlow() {
             </button>
             <span className="text-xs text-gray-400">or</span>
             <button
-              onClick={isRecording ? stopRecording : startRecording}
+              onClick={isRecording ? stopRecording : () => startRecording("concern")}
               className={`flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors ${
                 isRecording
                   ? "border-red-300 bg-red-50 text-red-700"
@@ -393,7 +406,7 @@ export default function IntakeFlow() {
               }`}
             >
               <span className={`inline-block h-3 w-3 rounded-full ${isRecording ? "animate-pulse bg-red-500" : "bg-gray-400"}`} />
-              {isRecording ? "Stop Recording" : "Voice Note"}
+              {isRecording ? "Stop" : "Speak"}
             </button>
           </div>
         </div>
@@ -448,7 +461,7 @@ export default function IntakeFlow() {
               {/* Voice note option */}
               <div className="mt-3 flex justify-end">
                 <button
-                  onClick={isRecording ? stopRecording : startRecording}
+                  onClick={isRecording ? stopRecording : () => startRecording("answer")}
                   className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
                     isRecording
                       ? "bg-red-50 text-red-700"
@@ -456,7 +469,7 @@ export default function IntakeFlow() {
                   }`}
                 >
                   <span className={`inline-block h-2 w-2 rounded-full ${isRecording ? "animate-pulse bg-red-500" : "bg-gray-400"}`} />
-                  {isRecording ? "Stop" : "Voice"}
+                  {isRecording ? "Stop" : "Speak"}
                 </button>
               </div>
             </div>
