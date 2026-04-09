@@ -55,10 +55,10 @@ class AuditService:
 
     async def log_access(
         self,
-        user_id: uuid.UUID,
-        patient_id: uuid.UUID,
+        user_id: uuid.UUID | None,
+        patient_id: uuid.UUID | None,
         resource_type: str,
-        resource_id: uuid.UUID,
+        resource_id: uuid.UUID | str,
         action: str,
         success: bool,
         details: dict | None = None,

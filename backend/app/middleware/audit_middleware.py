@@ -63,8 +63,8 @@ class AuditMiddleware(BaseHTTPMiddleware):
                     else AuditAction.DATA_ACCESS
                 )
                 await audit.log_access(
-                    user_id=user_id or uuid.UUID(int=0),
-                    patient_id=uuid.UUID(int=0),  # not known at middleware level
+                    user_id=user_id,  # None for unauthenticated requests
+                    patient_id=None,
                     resource_type="http",
                     resource_id=str(uuid.UUID(int=0)),
                     action=action,
