@@ -16,9 +16,11 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "conversation_sessions",
-        sa.Column("ai_context", JSON, nullable=True),
+    # Use IF NOT EXISTS so re-running the migration on a DB that already has
+    # the column (e.g. from a prior manual apply) doesn't fail.
+    op.execute(
+        "ALTER TABLE conversation_sessions "
+        "ADD COLUMN IF NOT EXISTS ai_context JSON"
     )
 
 
