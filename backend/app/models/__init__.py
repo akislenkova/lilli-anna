@@ -20,6 +20,7 @@ from app.models.audit import AuditAction, AuditLog
 from app.models.coverage import PhysicianCoverage
 from app.models.proxy import ProxyAuthorization, ProxyRelationship
 from app.models.message import StaffMessage
+from app.models.epic import EpicConnection
 
 __all__ = [
     "Base",
@@ -47,4 +48,5 @@ __all__ = [
     "ProxyAuthorization",
     "ProxyRelationship",
     "StaffMessage",
+    "EpicConnection",
 ]

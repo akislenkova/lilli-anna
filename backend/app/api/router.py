@@ -8,6 +8,7 @@ from app.api.routes import (
     appointments,
     auth,
     conversations,
+    epic,
     feedback,
     messages,
     patients,
@@ -25,4 +26,5 @@ api_router.include_router(appointments.router)
 api_router.include_router(ai_reports.router)
 api_router.include_router(feedback.router)
 api_router.include_router(messages.router)
+api_router.include_router(epic.router)
 api_router.include_router(admin.router)

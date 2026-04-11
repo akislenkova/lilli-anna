@@ -68,6 +68,8 @@ class Settings(BaseSettings):
     # Epic FHIR / MyChart
     EPIC_FHIR_BASE_URL: str = "https://fhir.epic.com/interconnect-fhir-oauth"
     EPIC_CLIENT_ID: str = ""
+    # Only needed for confidential clients; leave empty for public-client PKCE flow
+    EPIC_CLIENT_SECRET: str = ""
     EPIC_MYCHART_BASE_URL: str = "https://mychart.epic.com/MyChart"
 
     # Voice transcription stub

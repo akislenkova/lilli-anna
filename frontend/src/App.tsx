@@ -11,6 +11,7 @@ import { ConflictsPage } from "./pages/ConflictsPage";
 import { PriorityPage } from "./pages/PriorityPage";
 import { MedicalRecordPage } from "./pages/MedicalRecordPage";
 import { MessagesPage } from "./pages/MessagesPage";
+import { EpicCallbackPage } from "./pages/EpicCallbackPage";
 
 function LayoutWrapper() {
   return (
@@ -25,6 +26,7 @@ export default function App() {
     <AuthProvider>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/epic-callback" element={<EpicCallbackPage />} />
         <Route
           path="/"
           element={
