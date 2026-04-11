@@ -495,11 +495,18 @@ RED_FLAG_PATTERNS: list[dict] = [
     {
         "id": "rf_suicidal",
         "name": "Suicidal ideation",
-        "symptoms": ["depression"],
+        # Empty symptoms list = symptom-independent: triggers on indicator match alone.
+        # Suicidal ideation must NEVER be gated on prior symptom extraction.
+        "symptoms": [],
         "additional_indicators": [
-            "suicidal thoughts", "self-harm", "hopelessness", "no reason to live",
-            "want to die", "end my life", "kill myself", "hurting myself",
-            "mdd_safety",  # matches question_id when patient answers "yes" to safety screen
+            "suicidal thoughts", "suicidal ideation", "suicidal",
+            "self-harm", "self harm", "harm myself", "hurt myself", "hurting myself",
+            "want to die", "wanting to die", "wish i was dead", "wish i were dead",
+            "no reason to live", "not want to live", "not want to be here",
+            "end my life", "end it all", "take my own life",
+            "kill myself", "killing myself",
+            "hopelessness",
+            "mdd_safety",  # question_id: matches when patient answers "yes" to safety screen
         ],
         "severity": "critical",
         "action": "Provide crisis hotline (988). Flag for immediate clinical review.",

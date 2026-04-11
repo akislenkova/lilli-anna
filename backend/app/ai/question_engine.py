@@ -211,10 +211,47 @@ class QuestionEngine:
         )
         combined_context = f"{answers_text} {yes_context} {' '.join(symptoms)}"
 
+        # --- Pass 1: hardcoded safety-critical scan (belt-and-suspenders) ---
+        # Suicidal ideation must fire regardless of symptom extraction state.
+        SUICIDAL_PHRASES = {
+            "suicidal", "suicide", "self-harm", "self harm", "harm myself",
+            "hurt myself", "hurting myself", "want to die", "wanting to die",
+            "wish i was dead", "wish i were dead", "no reason to live",
+            "not want to live", "not want to be here", "end my life",
+            "end it all", "take my own life", "kill myself", "killing myself",
+        }
+        # Also fire if the safety-screen question was answered affirmatively
+        safety_q_positive = (
+            answers.get("mdd_safety") is True
+            or (
+                isinstance(answers.get("mdd_safety"), str)
+                and answers["mdd_safety"].strip().lower() in ("yes", "y")
+            )
+        )
+        found_suicidal_phrase = any(phrase in combined_context for phrase in SUICIDAL_PHRASES)
+        if (safety_q_positive or found_suicidal_phrase) and not any(
+            f.matched_pattern == "rf_suicidal" for f in flags
+        ):
+            flags.append(
+                RedFlag(
+                    trigger_description="Suicidal ideation",
+                    severity="critical",
+                    matched_pattern="rf_suicidal",
+                    action="Provide crisis hotline (988). Flag for immediate clinical review.",
+                )
+            )
+
+        # --- Pass 2: general pattern matching ---
         for pattern in RED_FLAG_PATTERNS:
-            # Check required symptom overlap
+            pid = pattern["id"]
+            # Skip if already flagged by the hardcoded safety scan above
+            if any(f.matched_pattern == pid for f in flags):
+                continue
+
             required_symptoms = pattern["symptoms"]
-            if not any(rs in symptoms for rs in required_symptoms):
+            # Patterns with an empty symptoms list are symptom-independent
+            # (e.g. suicidal ideation must never be gated on symptom extraction).
+            if required_symptoms and not any(rs in symptoms for rs in required_symptoms):
                 continue
 
             # Check additional indicators
@@ -225,14 +262,14 @@ class QuestionEngine:
             ]
 
             # A red flag triggers if:
-            # - symptom match AND at least one indicator matches, OR
-            # - symptom match AND there are no additional indicators defined
+            # - (symptom match or no required symptoms) AND at least one indicator matches, OR
+            # - (symptom match or no required symptoms) AND no additional indicators defined
             if matched_indicators or not indicators:
                 flags.append(
                     RedFlag(
                         trigger_description=pattern["name"],
                         severity=pattern["severity"],
-                        matched_pattern=pattern["id"],
+                        matched_pattern=pid,
                         action=pattern.get("action", ""),
                     )
                 )
