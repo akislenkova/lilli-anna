@@ -32,7 +32,7 @@ export function PhysicianDashboard() {
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
       </div>
     );
   }
@@ -59,7 +59,7 @@ export function PhysicianDashboard() {
 
       {/* Stats row */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatCard label="Today" value={today.length} sub="appointments" color="bg-blue-50 text-blue-900" />
+        <StatCard label="Today" value={today.length} sub="appointments" color="bg-primary-50 text-primary-900" />
         <StatCard label="Needs Review" value={pendingIntake.length} sub="intake complete" color="bg-emerald-50 text-emerald-900" to="/appointments?filter=intake_complete" />
         <StatCard label="Red Flags" value={redFlagAppts.length} sub="require attention" color={redFlagAppts.length > 0 ? "bg-red-50 text-red-900" : "bg-gray-50 text-gray-700"} />
         <StatCard label="Feedback Due" value={needsFeedback.length} sub="completed visits" color={needsFeedback.length > 0 ? "bg-amber-50 text-amber-900" : "bg-gray-50 text-gray-700"} />
@@ -101,7 +101,7 @@ export function PhysicianDashboard() {
                   to={`/appointments/${appt.id}`}
                   className="flex items-center gap-4 bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition-shadow"
                 >
-                  <div className="text-sm font-semibold text-blue-700 w-16 shrink-0">
+                  <div className="text-sm font-semibold text-primary-700 w-16 shrink-0">
                     {new Date(appt.scheduled_start!).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -115,7 +115,7 @@ export function PhysicianDashboard() {
                   </div>
                   <span className={`shrink-0 px-2 py-0.5 text-xs rounded-full ${
                     appt.status === "in_progress" ? "bg-purple-100 text-purple-700" :
-                    appt.status === "confirmed" ? "bg-blue-100 text-blue-700" :
+                    appt.status === "confirmed" ? "bg-primary-100 text-primary-700" :
                     "bg-gray-100 text-gray-600"
                   }`}>
                     {appt.status.replace(/_/g, " ")}

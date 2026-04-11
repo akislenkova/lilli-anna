@@ -105,7 +105,7 @@ export function FeedbackForm({ appointmentId }: Props) {
       <button
         type="submit"
         disabled={!accuracy || loading}
-        className="bg-blue-600 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+        className="bg-primary-600 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-primary-700 disabled:opacity-50"
       >
         {loading ? "Submitting..." : "Submit Feedback"}
       </button>

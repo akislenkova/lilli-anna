@@ -27,7 +27,7 @@ export function MessagesPage() {
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
       </div>
     );
   }
@@ -46,7 +46,7 @@ export function MessagesPage() {
             <div
               key={msg.id}
               className={`bg-white rounded-xl shadow-sm p-4 flex items-start gap-4 transition-colors ${
-                !msg.is_read ? "border-l-4 border-blue-500" : ""
+                !msg.is_read ? "border-l-4 border-primary-500" : ""
               }`}
             >
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-sm font-semibold text-gray-600">
@@ -57,7 +57,7 @@ export function MessagesPage() {
                   <span className="font-medium text-gray-900 text-sm">{msg.sender_name}</span>
                   <span className="text-xs text-gray-500">{ROLE_LABEL[msg.sender_role] ?? msg.sender_role}</span>
                   {!msg.is_read && (
-                    <span className="inline-block h-2 w-2 rounded-full bg-blue-500" />
+                    <span className="inline-block h-2 w-2 rounded-full bg-primary-500" />
                   )}
                 </div>
                 <p className="text-sm text-gray-700">{msg.content}</p>
@@ -70,7 +70,7 @@ export function MessagesPage() {
                   {msg.appointment_id && (
                     <Link
                       to={`/appointments/${msg.appointment_id}`}
-                      className="text-xs text-blue-600 hover:underline"
+                      className="text-xs text-primary-600 hover:underline"
                     >
                       View appointment →
                     </Link>

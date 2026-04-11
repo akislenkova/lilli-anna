@@ -32,7 +32,7 @@ async def create_coverage(
     absent_physician_id: UUID,
     start_date: date,
     end_date: date,
-    current_user: User = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Create a time-limited physician coverage assignment."""
@@ -50,7 +50,7 @@ async def create_coverage(
         absent_physician_id=absent_physician_id,
         start_date=start_date,
         end_date=end_date,
-        assigned_by=current_user.id,
+        assigned_by=UUID(current_user["user_id"]),
         is_active=True,
     )
     db.add(coverage)
@@ -58,7 +58,7 @@ async def create_coverage(
     await db.refresh(coverage)
 
     await AuditService(db).log_modification(
-        user_id=current_user.id, resource_type="coverage", resource_id=coverage.id,
+        user_id=UUID(current_user["user_id"]), resource_type="coverage", resource_id=coverage.id,
         changes={"action": "created", "covering": str(covering_physician_id), "absent": str(absent_physician_id)},
         ip_address="",
     )
@@ -68,7 +68,7 @@ async def create_coverage(
 @router.delete("/coverage/{coverage_id}", dependencies=[Depends(require_role(Role.ADMIN))])
 async def revoke_coverage(
     coverage_id: UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Revoke an active physician coverage."""
@@ -80,7 +80,7 @@ async def revoke_coverage(
     coverage.is_active = False
     await db.commit()
     await AuditService(db).log_modification(
-        user_id=current_user.id, resource_type="coverage", resource_id=coverage_id,
+        user_id=UUID(current_user["user_id"]), resource_type="coverage", resource_id=coverage_id,
         changes={"action": "revoked"}, ip_address="",
     )
     return {"status": "revoked"}
@@ -116,7 +116,7 @@ async def create_proxy(
     relationship: str,
     state_code: str,
     minor_age_of_consent: Optional[int] = None,
-    current_user: User = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Create a proxy authorization (parent/guardian, caregiver, legal proxy)."""
@@ -134,7 +134,7 @@ async def create_proxy(
     await db.refresh(proxy)
 
     await AuditService(db).log_modification(
-        user_id=current_user.id, resource_type="proxy", resource_id=proxy.id,
+        user_id=UUID(current_user["user_id"]), resource_type="proxy", resource_id=proxy.id,
         changes={"action": "created", "patient": str(patient_id), "proxy_user": str(proxy_user_id)},
         ip_address="",
     )
@@ -164,7 +164,7 @@ async def list_patient_proxies(patient_id: UUID, db: AsyncSession = Depends(get_
 @router.put("/proxy/{proxy_id}/verify", dependencies=[Depends(require_role(Role.ADMIN))])
 async def verify_proxy(
     proxy_id: UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Mark a proxy authorization as verified."""
@@ -176,11 +176,11 @@ async def verify_proxy(
         raise HTTPException(404, "Proxy authorization not found")
 
     proxy.verified = True
-    proxy.verified_by = current_user.id
+    proxy.verified_by = UUID(current_user["user_id"])
     await db.commit()
 
     await AuditService(db).log_modification(
-        user_id=current_user.id, resource_type="proxy", resource_id=proxy_id,
+        user_id=UUID(current_user["user_id"]), resource_type="proxy", resource_id=proxy_id,
         changes={"action": "verified"}, ip_address="",
     )
     return {"status": "verified"}

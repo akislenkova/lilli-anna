@@ -51,12 +51,13 @@ from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 
 # ---------------------------------------------------------------------------
-# Make the backend package importable so we can use SymptomExtractor directly
+# Make the backend and ml packages importable
 # ---------------------------------------------------------------------------
 _PROJECT_ROOT = Path(__file__).parent.parent
 _BACKEND_PATH = _PROJECT_ROOT / "backend"
-if str(_BACKEND_PATH) not in sys.path:
-    sys.path.insert(0, str(_BACKEND_PATH))
+for _p in (_PROJECT_ROOT, _BACKEND_PATH):
+    if str(_p) not in sys.path:
+        sys.path.insert(0, str(_p))
 
 from app.ai.symptom_extractor import SymptomExtractor  # noqa: E402
 from app.ai.question_engine import QuestionEngine       # noqa: E402
@@ -281,7 +282,13 @@ def main() -> None:
         sys.exit(1)
 
     df = pd.DataFrame([vars(r) for r in all_rows])[SCHEMA_COLUMNS]
-    logger.info("Total rows before splitting: %d", len(df))
+    logger.info("Total rows before filtering: %d", len(df))
+
+    # Drop "other" — not a useful training label; model should abstain at
+    # inference time rather than learn to predict a catch-all class.
+    before = len(df)
+    df = df[df["triage_cluster"] != "other"].reset_index(drop=True)
+    logger.info("Dropped %d 'other' rows, %d remaining", before - len(df), len(df))
 
     # Assign train/val/test splits
     out_cfg = cfg["output"]

@@ -73,7 +73,7 @@ export function SlotPicker({ appointmentId, duration, onBooked }: Props) {
             onClick={() => setSelectedDay(day)}
             className={`shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               selectedDay === day
-                ? "bg-blue-600 text-white"
+                ? "bg-primary-600 text-white"
                 : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
@@ -85,7 +85,7 @@ export function SlotPicker({ appointmentId, duration, onBooked }: Props) {
       {/* Slots */}
       {loading ? (
         <div className="flex justify-center py-6">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600" />
         </div>
       ) : slots.length === 0 ? (
         <p className="text-sm text-gray-500 text-center py-4">
@@ -104,8 +104,8 @@ export function SlotPicker({ appointmentId, duration, onBooked }: Props) {
                 onClick={() => setSelected(slot)}
                 className={`py-2 rounded-lg text-sm font-medium transition-colors ${
                   selected?.start === slot.start
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-50 text-gray-700 border border-gray-200 hover:border-blue-400 hover:text-blue-600"
+                    ? "bg-primary-600 text-white"
+                    : "bg-gray-50 text-gray-700 border border-gray-200 hover:border-blue-400 hover:text-primary-600"
                 }`}
               >
                 {localLabel}
@@ -116,14 +116,14 @@ export function SlotPicker({ appointmentId, duration, onBooked }: Props) {
       )}
 
       {selected && (
-        <div className="flex items-center justify-between bg-blue-50 rounded-lg p-3">
-          <p className="text-sm text-blue-800 font-medium">
+        <div className="flex items-center justify-between bg-primary-50 rounded-lg p-3">
+          <p className="text-sm text-primary-800 font-medium">
             {formatDate(selectedDay)} at {new Date(selected.start).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
           </p>
           <button
             onClick={handleBook}
             disabled={saving}
-            className="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+            className="bg-primary-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-primary-700 disabled:opacity-50"
           >
             {saving ? "Saving…" : "Request this time"}
           </button>

@@ -153,10 +153,31 @@ async def rotate(db_url: str, old_key: str, new_key: str) -> None:
 # Entry point
 # ---------------------------------------------------------------------------
 
+def _read_env_file(path: str) -> dict[str, str]:
+    """Parse a .env file into a dict, ignoring comments and blank lines."""
+    result = {}
+    try:
+        with open(path) as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, _, v = line.partition("=")
+                result[k.strip()] = v.strip()
+    except FileNotFoundError:
+        pass
+    return result
+
+
 if __name__ == "__main__":
+    # Read .env from the backend directory (one level up from scripts/)
+    env_file = os.path.join(os.path.dirname(__file__), "..", ".env")
+    env_vars = _read_env_file(os.path.abspath(env_file))
+
     old_key = os.environ.get("OLD_ENCRYPTION_KEY", "").strip()
-    new_key = os.environ.get("NEW_ENCRYPTION_KEY", "").strip()
-    db_url  = os.environ.get("DATABASE_URL", "postgresql://anilla:anilla@localhost:5432/anilla")
+    new_key = (os.environ.get("NEW_ENCRYPTION_KEY") or env_vars.get("ENCRYPTION_KEY", "")).strip()
+    db_url  = (os.environ.get("DATABASE_URL") or env_vars.get("DATABASE_URL") or
+               "postgresql://anilla:anilla@localhost:5432/anilla")
 
     if not old_key or not new_key:
         print(__doc__)

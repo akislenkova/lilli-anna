@@ -12,7 +12,7 @@ from pathlib import Path
 
 
 def _load_config() -> dict:
-    config_path = Path(__file__).parents[3] / "config.yaml"
+    config_path = Path(__file__).parents[2] / "config.yaml"
     with open(config_path) as f:
         return yaml.safe_load(f)
 
@@ -54,7 +54,7 @@ class ClusterMapper:
 
     def from_synthea_description(self, description: str) -> str:
         """Map a Synthea condition/encounter description to a triage cluster."""
-        desc_lower = description.lower()
+        desc_lower = str(description).lower() if description and description == description else ""
         scores: dict[str, int] = {}
         for cluster_name, cluster_cfg in self._clusters.items():
             for kw in cluster_cfg.get("synthea_keywords", []):

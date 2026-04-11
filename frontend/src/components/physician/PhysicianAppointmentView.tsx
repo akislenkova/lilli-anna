@@ -47,26 +47,26 @@ export function PhysicianAppointmentView({ appointment }: Props) {
           AI Intake Summary
         </h3>
 
-        <div className="grid grid-cols-3 gap-4 p-4 bg-blue-50 rounded-lg">
+        <div className="grid grid-cols-3 gap-4 p-4 bg-primary-50 rounded-lg">
           <div>
-            <p className="text-xs text-blue-600">Suggested Duration</p>
-            <p className="text-lg font-semibold text-blue-900">
+            <p className="text-xs text-primary-600">Suggested Duration</p>
+            <p className="text-lg font-semibold text-primary-900">
               {appointment.ai_suggested_duration
                 ? `${appointment.ai_suggested_duration} min`
                 : "Pending"}
             </p>
           </div>
           <div>
-            <p className="text-xs text-blue-600">Confidence</p>
-            <p className="text-lg font-semibold text-blue-900">
+            <p className="text-xs text-primary-600">Confidence</p>
+            <p className="text-lg font-semibold text-primary-900">
               {appointment.ai_confidence != null
                 ? `${Math.round(appointment.ai_confidence * 100)}%`
                 : "N/A"}
             </p>
           </div>
           <div>
-            <p className="text-xs text-blue-600">Duration Range</p>
-            <p className="text-lg font-semibold text-blue-900">
+            <p className="text-xs text-primary-600">Duration Range</p>
+            <p className="text-lg font-semibold text-primary-900">
               {appointment.ai_duration_range_min && appointment.ai_duration_range_max
                 ? `${appointment.ai_duration_range_min}–${appointment.ai_duration_range_max} min`
                 : "N/A"}
@@ -172,7 +172,7 @@ export function PhysicianAppointmentView({ appointment }: Props) {
           <h3 className="text-lg font-semibold text-gray-900">
             Intake Conversation
           </h3>
-          <span className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800">
+          <span className="flex items-center gap-1 text-sm text-primary-600 hover:text-primary-800">
             {showTranscript ? (
               <>
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -195,7 +195,7 @@ export function PhysicianAppointmentView({ appointment }: Props) {
           <div className="mt-4">
             {loadingTranscript ? (
               <div className="flex justify-center py-6">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600" />
               </div>
             ) : transcript && transcript.messages.length > 0 ? (
               <div className="space-y-3">
@@ -206,12 +206,12 @@ export function PhysicianAppointmentView({ appointment }: Props) {
                       key={i}
                       className={`p-3 rounded-lg ${
                         msg.role === "patient"
-                          ? "bg-blue-50 ml-8"
+                          ? "bg-primary-50 ml-8"
                           : "bg-gray-50 mr-8"
                       }`}
                     >
                       <p className="text-xs font-medium uppercase tracking-wide mb-1 ${
-                        msg.role === 'patient' ? 'text-blue-500' : 'text-gray-400'
+                        msg.role === 'patient' ? 'text-primary-500' : 'text-gray-400'
                       }">
                         {msg.role === "patient" ? "Patient" : "AI"}
                       </p>

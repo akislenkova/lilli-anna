@@ -55,7 +55,7 @@ export function SchedulerDashboard() {
               key={v.key}
               onClick={() => setView(v.key)}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                view === v.key ? "bg-white shadow text-blue-600" : "text-gray-600 hover:text-gray-900"
+                view === v.key ? "bg-white shadow text-primary-600" : "text-gray-600 hover:text-gray-900"
               }`}
             >
               {v.label}
@@ -66,7 +66,7 @@ export function SchedulerDashboard() {
 
       {loading ? (
         <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
         </div>
       ) : appointments.length === 0 ? (
         <div className="bg-gray-50 rounded-lg p-8 text-center text-gray-500">
@@ -91,7 +91,7 @@ export function SchedulerDashboard() {
                   <div className="flex-1">
                     <Link
                       to={`/appointments/${appt.id}`}
-                      className="text-lg font-medium text-gray-900 hover:text-blue-600"
+                      className="text-lg font-medium text-gray-900 hover:text-primary-600"
                     >
                       {appt.patient_name ?? `Patient #${appt.patient_id?.slice(0, 8)}`}
                     </Link>
@@ -111,7 +111,7 @@ export function SchedulerDashboard() {
                     {appt.ai_suggested_duration && (
                       <div className="text-sm">
                         <span className="text-gray-500">AI suggests: </span>
-                        <span className="font-semibold text-blue-700">
+                        <span className="font-semibold text-primary-700">
                           {appt.ai_suggested_duration} min
                         </span>
                         {appt.ai_confidence != null && (

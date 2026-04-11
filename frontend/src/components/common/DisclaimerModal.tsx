@@ -16,7 +16,7 @@ export default function DisclaimerModal({ open, onAccept, onDecline }: Props) {
       <div className="w-full max-w-lg rounded-xl bg-white shadow-2xl">
         {/* Header */}
         <div className="flex items-center gap-3 border-b border-gray-200 px-6 py-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-100">
             <svg
               className="h-5 w-5 text-primary-600"
               fill="none"
@@ -43,9 +43,9 @@ export default function DisclaimerModal({ open, onAccept, onDecline }: Props) {
             intake questionnaire.
           </p>
 
-          <div className="space-y-3 rounded-lg bg-blue-50 p-4">
+          <div className="space-y-3 rounded-lg bg-primary-50 p-4">
             <div className="flex items-start gap-3">
-              <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-200 text-xs font-bold text-blue-800">
+              <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-200 text-xs font-bold text-primary-800">
                 1
               </div>
               <p className="text-sm text-gray-800">
@@ -55,7 +55,7 @@ export default function DisclaimerModal({ open, onAccept, onDecline }: Props) {
             </div>
 
             <div className="flex items-start gap-3">
-              <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-200 text-xs font-bold text-blue-800">
+              <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-200 text-xs font-bold text-primary-800">
                 2
               </div>
               <p className="text-sm text-gray-800">
@@ -66,7 +66,7 @@ export default function DisclaimerModal({ open, onAccept, onDecline }: Props) {
             </div>
 
             <div className="flex items-start gap-3">
-              <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-200 text-xs font-bold text-blue-800">
+              <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-200 text-xs font-bold text-primary-800">
                 3
               </div>
               <p className="text-sm text-gray-800">

@@ -14,8 +14,8 @@ const STATUS_FILTERS = [
 const STATUS_STYLES: Record<string, string> = {
   pending_intake: "bg-amber-100 text-amber-700",
   intake_complete: "bg-emerald-100 text-emerald-700",
-  scheduled: "bg-blue-100 text-blue-700",
-  confirmed: "bg-blue-100 text-blue-700",
+  scheduled: "bg-primary-100 text-primary-700",
+  confirmed: "bg-primary-100 text-primary-700",
   in_progress: "bg-purple-100 text-purple-700",
   completed: "bg-gray-100 text-gray-600",
   cancelled: "bg-red-100 text-red-600",
@@ -37,7 +37,7 @@ export function PhysicianPatientList() {
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
       </div>
     );
   }
@@ -63,7 +63,7 @@ export function PhysicianPatientList() {
             }}
             className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
               filter === f.key
-                ? "bg-blue-600 text-white"
+                ? "bg-primary-600 text-white"
                 : "bg-gray-100 text-gray-600 hover:bg-gray-200"
             }`}
           >
@@ -99,7 +99,7 @@ export function PhysicianPatientList() {
               </div>
               <div className="shrink-0 text-right">
                 {appt.ai_suggested_duration && (
-                  <p className="text-sm font-medium text-blue-700">{appt.ai_suggested_duration} min</p>
+                  <p className="text-sm font-medium text-primary-700">{appt.ai_suggested_duration} min</p>
                 )}
                 <p className="text-xs text-emerald-600 font-medium">Review intake →</p>
               </div>
@@ -139,7 +139,7 @@ export function PhysicianPatientList() {
                     <p className="text-xs text-gray-500">{appt.scheduler_approved_duration} min</p>
                   )}
                   {appt.ai_suggested_duration && !appt.scheduler_approved_duration && (
-                    <p className="text-xs text-blue-600">AI: {appt.ai_suggested_duration} min</p>
+                    <p className="text-xs text-primary-600">AI: {appt.ai_suggested_duration} min</p>
                   )}
                 </div>
               </div>

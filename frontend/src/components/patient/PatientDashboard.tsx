@@ -8,8 +8,8 @@ import type { Appointment, AppointmentStatus } from "../../types";
 const STATUS_STYLES: Record<string, { bg: string; text: string; label: string }> = {
   pending_intake: { bg: "bg-amber-100", text: "text-amber-700", label: "Intake Pending" },
   intake_complete: { bg: "bg-emerald-100", text: "text-emerald-700", label: "Intake Complete" },
-  scheduled: { bg: "bg-blue-100", text: "text-blue-700", label: "Scheduled" },
-  confirmed: { bg: "bg-blue-100", text: "text-blue-700", label: "Confirmed" },
+  scheduled: { bg: "bg-primary-100", text: "text-primary-700", label: "Scheduled" },
+  confirmed: { bg: "bg-primary-100", text: "text-primary-700", label: "Confirmed" },
   checked_in: { bg: "bg-indigo-100", text: "text-indigo-700", label: "Checked In" },
   in_progress: { bg: "bg-purple-100", text: "text-purple-700", label: "In Progress" },
   completed: { bg: "bg-gray-100", text: "text-gray-600", label: "Completed" },
@@ -47,8 +47,8 @@ function StatusIcon({ status }: { status: AppointmentStatus }) {
     );
   }
   return (
-    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-100">
-      <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-100">
+      <svg className="h-5 w-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
       </svg>
     </div>
@@ -105,7 +105,7 @@ export function PatientDashboard() {
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
       </div>
     );
   }
@@ -123,7 +123,7 @@ export function PatientDashboard() {
           </Link>
           <Link
             to="/intake"
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+            className="bg-primary-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-primary-700 transition-colors"
           >
             Schedule New Visit
           </Link>
@@ -205,7 +205,7 @@ export function PatientDashboard() {
                           e.preventDefault();
                           setSlotPickerOpen(appt.id);
                         }}
-                        className="text-sm text-blue-600 font-medium hover:text-blue-800"
+                        className="text-sm text-primary-600 font-medium hover:text-primary-800"
                       >
                         Pick a time that works for you →
                       </button>
@@ -226,7 +226,7 @@ export function PatientDashboard() {
         {upcoming.length === 0 ? (
           <div className="bg-gray-50 rounded-lg p-6 text-center text-gray-500">
             No upcoming appointments.{" "}
-            <Link to="/intake" className="text-blue-600 hover:underline">
+            <Link to="/intake" className="text-primary-600 hover:underline">
               Schedule one now
             </Link>
             .

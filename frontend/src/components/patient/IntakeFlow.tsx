@@ -288,8 +288,8 @@ export default function IntakeFlow() {
           }`}
         >
           <div className="flex items-start gap-3 rounded-xl bg-white p-4 shadow-sm">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100">
-              <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-100">
+              <svg className="h-5 w-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
             </div>
@@ -333,7 +333,7 @@ export default function IntakeFlow() {
         {/* Back to dashboard */}
         <button
           onClick={() => navigate("/")}
-          className={`mt-8 rounded-xl bg-blue-600 px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all duration-500 delay-[1100ms] ${
+          className={`mt-8 rounded-xl bg-primary-600 px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-200 hover:bg-primary-700 transition-all duration-500 delay-[1100ms] ${
             showCheck ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
           }`}
         >
@@ -353,7 +353,7 @@ export default function IntakeFlow() {
         </div>
         <div className="mt-1 h-2 w-full rounded-full bg-gray-200">
           <div
-            className="h-2 rounded-full bg-blue-500 transition-all"
+            className="h-2 rounded-full bg-primary-500 transition-all"
             style={{
               width: session
                 ? `${(session.questions_asked_count / MAX_QUESTIONS) * 100}%`
@@ -394,7 +394,7 @@ export default function IntakeFlow() {
             <button
               onClick={() => handleVisitTypeSelect("yearly_checkup")}
               disabled={loading}
-              className="group rounded-xl border-2 border-gray-200 p-6 text-left transition-colors hover:border-blue-500 hover:bg-blue-50"
+              className="group rounded-xl border-2 border-gray-200 p-6 text-left transition-colors hover:border-primary-500 hover:bg-primary-50"
             >
               <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-green-100 text-green-700 group-hover:bg-green-200">
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -410,9 +410,9 @@ export default function IntakeFlow() {
             <button
               onClick={() => handleVisitTypeSelect("specific_concern")}
               disabled={loading}
-              className="group rounded-xl border-2 border-gray-200 p-6 text-left transition-colors hover:border-blue-500 hover:bg-blue-50"
+              className="group rounded-xl border-2 border-gray-200 p-6 text-left transition-colors hover:border-primary-500 hover:bg-primary-50"
             >
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100 text-blue-700 group-hover:bg-blue-200">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary-100 text-primary-700 group-hover:bg-primary-200">
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                 </svg>
@@ -442,14 +442,14 @@ export default function IntakeFlow() {
             onChange={(e) => setInitialConcern(e.target.value)}
             placeholder="e.g., I've been having headaches for the past two weeks..."
             rows={4}
-            className="mt-4 w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+            className="mt-4 w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
           />
 
           <div className="mt-4 flex items-center gap-3">
             <button
               onClick={handleInitialConcernSubmit}
               disabled={loading || !initialConcern.trim()}
-              className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              className="rounded-lg bg-primary-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
             >
               {loading ? "Starting..." : "Continue"}
             </button>
@@ -481,7 +481,7 @@ export default function IntakeFlow() {
                   msg.role === "ai"
                     ? "bg-white shadow-sm"
                     : msg.role === "patient"
-                      ? "ml-8 bg-blue-50"
+                      ? "ml-8 bg-primary-50"
                       : "bg-gray-100 text-xs italic text-gray-500"
                 }`}
               >
@@ -503,13 +503,13 @@ export default function IntakeFlow() {
                   onChange={(e) => setAnswer(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSubmitAnswer()}
                   placeholder="Type your answer..."
-                  className="flex-1 rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  className="flex-1 rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                   autoFocus
                 />
                 <button
                   onClick={handleSubmitAnswer}
                   disabled={loading || !answer.trim()}
-                  className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                  className="rounded-lg bg-primary-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
                 >
                   {loading ? "..." : "Send"}
                 </button>
@@ -564,7 +564,7 @@ export default function IntakeFlow() {
                   <div
                     key={idx}
                     className={`rounded-lg p-3 ${
-                      msg.role === "ai" ? "bg-gray-50" : "ml-4 bg-blue-50"
+                      msg.role === "ai" ? "bg-gray-50" : "ml-4 bg-primary-50"
                     }`}
                   >
                     <div className="text-xs font-medium uppercase text-gray-400">
@@ -586,7 +586,7 @@ export default function IntakeFlow() {
             <button
               onClick={handleComplete}
               disabled={loading}
-              className="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              className="rounded-lg bg-primary-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
             >
               {loading ? "Completing..." : "Complete Intake"}
             </button>

@@ -52,7 +52,7 @@ export function AppointmentDetailPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
       </div>
     );
   }
@@ -80,7 +80,7 @@ export function AppointmentDetailPage() {
                 ? "bg-green-100 text-green-700"
                 : appointment.status === "cancelled"
                 ? "bg-red-100 text-red-700"
-                : "bg-blue-100 text-blue-700"
+                : "bg-primary-100 text-primary-700"
             }`}
           >
             {appointment.status.replace("_", " ").toUpperCase()}
@@ -139,11 +139,11 @@ export function AppointmentDetailPage() {
           </h3>
           <p className="text-gray-700">{appointment.initial_reason ?? "N/A"}</p>
           {report && (
-            <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-              <p className="text-sm font-medium text-blue-800">
+            <div className="mt-4 p-4 bg-primary-50 rounded-lg">
+              <p className="text-sm font-medium text-primary-800">
                 AI Recommended: {report.suggested_duration} minutes
                 {report.duration_range_min && report.duration_range_max && (
-                  <span className="text-blue-600 ml-1">
+                  <span className="text-primary-600 ml-1">
                     (range: {report.duration_range_min}–
                     {report.duration_range_max} min)
                   </span>
@@ -170,7 +170,7 @@ export function AppointmentDetailPage() {
               className="flex items-center justify-between w-full"
             >
               <h3 className="text-lg font-semibold text-gray-900">Intake Conversation</h3>
-              <span className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800">
+              <span className="flex items-center gap-1 text-sm text-primary-600 hover:text-primary-800">
                 {showNurseTranscript ? (
                   <>
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -193,7 +193,7 @@ export function AppointmentDetailPage() {
               <div className="mt-4">
                 {loadingNurseTranscript ? (
                   <div className="flex justify-center py-6">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600" />
                   </div>
                 ) : nurseTranscript && nurseTranscript.messages.length > 0 ? (
                   <div className="space-y-3">
@@ -203,7 +203,7 @@ export function AppointmentDetailPage() {
                         <div
                           key={i}
                           className={`p-3 rounded-lg ${
-                            msg.role === "patient" ? "bg-blue-50 ml-8" : "bg-gray-50 mr-8"
+                            msg.role === "patient" ? "bg-primary-50 ml-8" : "bg-gray-50 mr-8"
                           }`}
                         >
                           <p className="text-xs font-medium uppercase tracking-wide mb-1 text-gray-400">

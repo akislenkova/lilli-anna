@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import enum
 import os
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Optional
 
@@ -11,9 +12,11 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.database import get_db
 
 # ---------------------------------------------------------------------------
 # Password hashing
@@ -32,7 +35,7 @@ def verify_password(plain: str, hashed: str) -> bool:
 # ---------------------------------------------------------------------------
 # JWT helpers
 # ---------------------------------------------------------------------------
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
@@ -72,36 +75,54 @@ class Role(str, enum.Enum):
 # ---------------------------------------------------------------------------
 # Current-user dependency
 # ---------------------------------------------------------------------------
-def _get_db():
-    """Placeholder – replaced by the real DB session dependency at app startup."""
-    raise NotImplementedError("DB dependency not wired")
-
-
-def get_current_user(
+async def get_current_user(
     token: Annotated[str, Depends(oauth2_scheme)],
-):
-    """Validate JWT and return user dict from token payload.
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Validate JWT, load the user from the database, and return identity.
 
-    In production this would look up the user in the database.  For now it
-    returns the decoded token payload which must contain ``sub`` (user id)
-    and ``role``.
+    Role and active status always come from the database so revoked or
+    deactivated accounts cannot keep using an old token's claims.
     """
     payload = verify_access_token(token)
-    user_id: Optional[str] = payload.get("sub")
-    role: Optional[str] = payload.get("role")
-    if user_id is None or role is None:
+    user_id_raw = payload.get("sub")
+    if user_id_raw is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token payload",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    return {"user_id": user_id, "role": role, **payload}
+    try:
+        user_uuid = uuid.UUID(str(user_id_raw))
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token payload",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    from app.models.user import User
+
+    result = await db.execute(select(User).where(User.id == user_uuid))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User no longer exists",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is deactivated",
+        )
+    return {"user_id": str(user.id), "role": user.role.value, "name": user.full_name}
 
 
 def require_role(*roles: Role):
     """Dependency factory that restricts access to one or more roles."""
 
-    def _check(current_user: Annotated[dict, Depends(get_current_user)]):
+    async def _check(current_user: Annotated[dict, Depends(get_current_user)]):
         if current_user["role"] not in [r.value for r in roles]:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

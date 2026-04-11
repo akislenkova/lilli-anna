@@ -49,7 +49,7 @@ const STATUS_LABEL: Record<string, string> = {
 const STATUS_COLOR: Record<string, string> = {
   in_progress: "bg-purple-100 text-purple-700",
   checked_in: "bg-teal-100 text-teal-700",
-  confirmed: "bg-blue-100 text-blue-700",
+  confirmed: "bg-primary-100 text-primary-700",
   intake_complete: "bg-emerald-100 text-emerald-700",
   scheduled: "bg-gray-100 text-gray-600",
 };
@@ -68,7 +68,7 @@ export function NurseDashboard() {
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
       </div>
     );
   }
@@ -122,7 +122,7 @@ export function NurseDashboard() {
           label="Today"
           value={today.length}
           sub="appointments"
-          color="bg-blue-50 text-blue-900"
+          color="bg-primary-50 text-primary-900"
         />
         <StatCard
           label="Intake Ready"
@@ -258,7 +258,7 @@ export function NurseDashboard() {
                 to={`/appointments/${appt.id}`}
                 className="flex items-center gap-4 bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition-shadow"
               >
-                <div className="text-sm font-semibold text-blue-700 w-16 shrink-0">
+                <div className="text-sm font-semibold text-primary-700 w-16 shrink-0">
                   {new Date(appt.scheduled_start!).toLocaleTimeString(undefined, {
                     hour: "numeric",
                     minute: "2-digit",

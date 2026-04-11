@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.limiter import limiter
 from app.core.security import (
@@ -141,6 +142,11 @@ async def register(
     """Create a new user account."""
 
     requested_role = Role(user_in.role)
+    if not settings.ALLOW_STAFF_SELF_REGISTRATION and requested_role != Role.PATIENT:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Staff accounts are not self-service; contact your administrator.",
+        )
 
     # Check duplicate email
     existing = await db.execute(select(User).where(User.email == user_in.email))

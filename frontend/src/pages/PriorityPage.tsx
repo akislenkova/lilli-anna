@@ -28,7 +28,7 @@ export function PriorityPage() {
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
       </div>
     );
   }
@@ -53,7 +53,7 @@ export function PriorityPage() {
               className="block bg-white rounded-xl shadow p-5 hover:shadow-md transition-shadow"
             >
               <div className="flex items-center gap-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700 font-bold text-sm">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-700 font-bold text-sm">
                   #{i + 1}
                 </div>
                 <div className="flex-1">

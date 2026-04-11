@@ -35,7 +35,7 @@ export function MedicalRecordPage() {
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
       </div>
     );
   }
@@ -52,7 +52,7 @@ export function MedicalRecordPage() {
     <div className="max-w-2xl mx-auto space-y-8">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">My Medical Record</h1>
-        <Link to="/" className="text-sm text-blue-600 hover:underline">
+        <Link to="/" className="text-sm text-primary-600 hover:underline">
           ← Back to Dashboard
         </Link>
       </div>

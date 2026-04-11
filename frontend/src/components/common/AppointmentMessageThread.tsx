@@ -74,7 +74,7 @@ export function AppointmentMessageThread({ appointmentId }: Props) {
           </svg>
           <h3 className="text-base font-semibold text-gray-900">Staff Messages</h3>
           {messages.filter((m) => !m.is_read && m.recipient_id === user?.id).length > 0 && (
-            <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-blue-600 text-white text-xs font-bold">
+            <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-primary-600 text-white text-xs font-bold">
               {messages.filter((m) => !m.is_read && m.recipient_id === user?.id).length}
             </span>
           )}
@@ -116,7 +116,7 @@ export function AppointmentMessageThread({ appointmentId }: Props) {
                       <div
                         className={`rounded-xl px-3 py-2 text-sm ${
                           isMe
-                            ? "bg-blue-600 text-white rounded-tr-sm"
+                            ? "bg-primary-600 text-white rounded-tr-sm"
                             : "bg-gray-100 text-gray-800 rounded-tl-sm"
                         }`}
                       >
@@ -136,7 +136,7 @@ export function AppointmentMessageThread({ appointmentId }: Props) {
               <select
                 value={recipientId}
                 onChange={(e) => setRecipientId(e.target.value)}
-                className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none"
               >
                 <option value="">Send to…</option>
                 {staff.map((s) => (
@@ -153,12 +153,12 @@ export function AppointmentMessageThread({ appointmentId }: Props) {
                 onChange={(e) => setContent(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
                 placeholder="Type a message…"
-                className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none"
               />
               <button
                 onClick={handleSend}
                 disabled={sending || !content.trim() || !recipientId}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50 transition-colors"
               >
                 {sending ? "…" : "Send"}
               </button>
