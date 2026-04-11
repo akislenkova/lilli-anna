@@ -484,13 +484,80 @@ CONDITION_QUESTIONS: dict[str, list[dict]] = {
 # ---------------------------------------------------------------------------
 
 RED_FLAG_PATTERNS: list[dict] = [
+    # -----------------------------------------------------------------------
+    # CRITICAL — call 911 / immediate ER
+    # -----------------------------------------------------------------------
     {
         "id": "rf_acs",
         "name": "Possible acute coronary syndrome",
-        "symptoms": ["chest_pain", "shortness_of_breath"],
-        "additional_indicators": ["radiating arm pain", "diaphoresis", "nausea"],
+        # ANY one of these symptoms + at least one indicator triggers the flag.
+        # Previously only anchored to chest_pain + shortness_of_breath;
+        # palpitations added so isolated ACS with arrhythmia is also captured.
+        "symptoms": ["chest_pain", "shortness_of_breath", "palpitations"],
+        "additional_indicators": [
+            "radiating arm pain", "radiating to arm", "left arm pain", "left arm",
+            "jaw pain", "jaw tightness",
+            "diaphoresis", "sweating profusely", "cold sweat",
+            "nausea", "vomiting",
+            "pressure in chest", "squeezing chest", "crushing chest",
+            "tightness in chest", "heavy chest",
+            "worse with exertion", "exertional chest",
+        ],
         "severity": "critical",
         "action": "Advise calling 911 or going to nearest ER immediately.",
+    },
+    {
+        "id": "rf_aortic_dissection",
+        "name": "Possible aortic dissection",
+        # Tearing/ripping chest or back pain at maximum intensity from onset —
+        # distinct from ACS. Back pain anchor catches posterior dissections that
+        # never involve typical chest pain.
+        "symptoms": ["chest_pain", "back_pain"],
+        "additional_indicators": [
+            "tearing", "ripping", "tearing pain", "ripping pain",
+            "sudden severe", "instant onset", "maximum from the start",
+            "radiating to back", "radiating to jaw",
+            "worst pain of my life", "worst pain ever", "10 out of 10 immediately",
+            "different blood pressure", "one arm higher", "aorta", "dissection",
+        ],
+        "severity": "critical",
+        "action": "Advise calling 911 immediately. Aortic dissection is a surgical emergency — time-critical.",
+    },
+    {
+        "id": "rf_hypertensive_emergency",
+        "name": "Possible hypertensive emergency",
+        # Very high BP plus end-organ symptoms (headache, vision, chest, confusion).
+        # BP numbers are matched as substrings in free text (e.g. "190/110").
+        "symptoms": ["headache", "vision_changes", "chest_pain"],
+        "additional_indicators": [
+            "very high blood pressure", "extremely high blood pressure",
+            "blood pressure over 180", "blood pressure 190", "blood pressure 200",
+            "blood pressure 210", "blood pressure 220", "blood pressure 230",
+            "190/", "200/", "210/", "220/", "230/", "180/12",
+            "hypertensive crisis", "hypertensive emergency", "hypertensive urgency",
+            "worst headache", "thunderclap", "sudden severe headache",
+            "blurred vision", "vision changes",
+            "confusion", "altered mental status", "nosebleed",
+        ],
+        "severity": "critical",
+        "action": "Advise urgent ER evaluation. Hypertensive emergency can cause stroke, MI, or acute kidney injury.",
+    },
+    {
+        "id": "rf_aortic_aneurysm",
+        "name": "Possible aortic aneurysm rupture",
+        # Pulsating abdominal mass or sudden severe abdominal/back pain in a
+        # high-risk patient (older male, hypertension, smoking history).
+        "symptoms": ["abdominal_pain", "back_pain"],
+        "additional_indicators": [
+            "pulsating", "pulsatile", "throbbing in abdomen", "pulsating mass",
+            "tearing", "ripping",
+            "sudden severe abdominal", "sudden severe back",
+            "worst abdominal pain", "worst back pain",
+            "aortic aneurysm", "aaa", "known aneurysm",
+            "radiating to groin", "radiating to legs", "flank pain",
+        ],
+        "severity": "critical",
+        "action": "Advise calling 911 immediately. Ruptured AAA is a surgical emergency.",
     },
     {
         "id": "rf_suicidal",
@@ -514,16 +581,32 @@ RED_FLAG_PATTERNS: list[dict] = [
     {
         "id": "rf_stroke_fast",
         "name": "Stroke signs (FAST)",
-        "symptoms": ["dizziness"],
-        "additional_indicators": ["facial drooping", "arm weakness", "speech difficulty", "sudden onset", "worst headache of life"],
+        # Previously only anchored to dizziness — many stroke patients present
+        # with headache, vision change, or numbness/tingling as the primary
+        # complaint. All four are now valid anchors.
+        "symptoms": ["dizziness", "headache", "vision_changes", "numbness_tingling"],
+        "additional_indicators": [
+            "facial drooping", "face drooping", "face droop", "drooping face", "face is drooping",
+            "arm weakness", "arm numb", "arm numbness", "arm feels weak",
+            "leg weakness", "leg numb",
+            "speech difficulty", "slurred speech", "can't speak", "trouble speaking", "garbled speech",
+            "sudden onset", "sudden numbness", "sudden weakness", "sudden confusion",
+            "worst headache of life", "worst headache ever", "thunderclap headache",
+            "vision loss", "sudden vision", "double vision",
+        ],
         "severity": "critical",
-        "action": "Advise calling 911 immediately. Time-critical intervention.",
+        "action": "Advise calling 911 immediately. Stroke is time-critical — every minute matters.",
     },
     {
         "id": "rf_anaphylaxis",
         "name": "Severe allergic reaction / anaphylaxis",
         "symptoms": ["skin_rash"],
-        "additional_indicators": ["throat swelling", "difficulty breathing", "tongue swelling", "widespread hives"],
+        "additional_indicators": [
+            "throat swelling", "throat closing", "tongue swelling", "lip swelling",
+            "difficulty breathing", "can't breathe", "wheezing",
+            "widespread hives", "full body hives",
+            "dizziness", "lightheaded", "feeling faint",
+        ],
         "severity": "critical",
         "action": "Advise using EpiPen if available and calling 911.",
     },
@@ -531,23 +614,159 @@ RED_FLAG_PATTERNS: list[dict] = [
         "id": "rf_meningitis",
         "name": "Possible meningitis",
         "symptoms": ["fever", "headache"],
-        "additional_indicators": ["stiff neck", "photophobia", "altered mental status", "petechial rash"],
+        "additional_indicators": [
+            "stiff neck", "neck stiffness", "can't bend neck",
+            "photophobia", "sensitive to light", "light hurts eyes",
+            "altered mental status", "confused", "unresponsive",
+            "petechial rash", "purple rash", "non-blanching rash",
+        ],
         "severity": "critical",
         "action": "Advise going to ER immediately for evaluation.",
     },
     {
         "id": "rf_pe",
         "name": "Possible pulmonary embolism",
-        "symptoms": ["shortness_of_breath", "chest_pain"],
-        "additional_indicators": ["sudden onset", "leg swelling", "recent surgery", "recent travel", "hemoptysis"],
+        # Cough added as anchor — PE can present with haemoptysis + dyspnoea
+        # without prominent chest pain, which the original pattern would miss.
+        "symptoms": ["shortness_of_breath", "chest_pain", "cough"],
+        "additional_indicators": [
+            "sudden onset", "sudden shortness of breath",
+            "leg swelling", "calf pain", "calf swelling", "calf tenderness",
+            "recent surgery", "recent travel", "long flight", "immobile", "bed rest",
+            "hemoptysis", "coughing blood", "blood in sputum", "bloody sputum",
+            "rapid heart rate", "heart racing",
+            "pleuritic", "pain with breathing", "worse with breathing",
+        ],
         "severity": "critical",
-        "action": "Advise ER evaluation. Time-critical.",
+        "action": "Advise ER evaluation. PE is time-critical.",
+    },
+    {
+        "id": "rf_dka",
+        "name": "Possible diabetic ketoacidosis (DKA)",
+        # Nausea and fatigue are the most commonly extracted symptoms in early
+        # DKA. Anchoring to both increases sensitivity without over-triggering.
+        "symptoms": ["nausea", "fatigue"],
+        "additional_indicators": [
+            "fruity breath", "fruity-smelling breath", "acetone breath", "sweet breath",
+            "very high blood sugar", "blood sugar over 250", "blood sugar over 300",
+            "blood sugar 300", "blood sugar 400", "glucose over 300",
+            "ketones", "ketone", "ketonuria",
+            "not taking insulin", "missed insulin", "out of insulin", "ran out of insulin",
+            "type 1 diabetes", "diabetic", "insulin dependent",
+            "excessive thirst", "drinking a lot", "polyuria", "urinating a lot",
+            "vomiting and diabetic", "abdominal pain and diabetic",
+        ],
+        "severity": "critical",
+        "action": "Advise ER evaluation. DKA requires IV insulin and fluids — medical emergency.",
+    },
+    {
+        "id": "rf_sepsis",
+        "name": "Possible sepsis",
+        "symptoms": ["fever"],
+        "additional_indicators": [
+            "confusion", "altered mental status", "not making sense",
+            "rapid breathing", "breathing fast",
+            "rapid heart rate", "heart racing",
+            "very low blood pressure", "feeling faint", "hypotension",
+            "mottled skin", "mottling", "skin looks blotchy",
+            "shaking uncontrollably", "rigors",
+        ],
+        "severity": "critical",
+        "action": "Advise calling 911. Sepsis is time-critical.",
+    },
+    {
+        "id": "rf_ectopic",
+        "name": "Possible ectopic pregnancy",
+        "symptoms": ["abdominal_pain"],
+        "additional_indicators": [
+            "missed period", "late period", "positive pregnancy test", "pregnant",
+            "vaginal bleeding", "spotting", "bleeding and pregnant",
+            "shoulder pain", "shoulder tip pain", "right shoulder pain",
+        ],
+        "severity": "critical",
+        "action": "Advise ER evaluation immediately.",
+    },
+    {
+        "id": "rf_cauda_equina",
+        "name": "Possible cauda equina syndrome",
+        "symptoms": ["back_pain"],
+        "additional_indicators": [
+            "bowel incontinence", "can't control bowels", "bowel accident",
+            "bladder incontinence", "can't control bladder", "urinary retention", "can't urinate",
+            "saddle anesthesia", "numbness in groin", "numbness in inner thigh", "numbness in buttocks",
+            "bilateral leg weakness", "both legs weak", "both legs numb",
+        ],
+        "severity": "critical",
+        "action": "Advise ER immediately. Cauda equina is a surgical emergency.",
+    },
+
+    # -----------------------------------------------------------------------
+    # HIGH — same-day evaluation required
+    # -----------------------------------------------------------------------
+    {
+        "id": "rf_cardiac_syncope",
+        "name": "Syncope — possible cardiac cause",
+        # Dizziness and palpitations are both valid anchors; either can precede
+        # loss of consciousness. No-warning sudden collapse is the key indicator.
+        "symptoms": ["dizziness", "palpitations"],
+        "additional_indicators": [
+            "loss of consciousness", "lost consciousness", "blacked out", "blacked out",
+            "passed out", "fainted", "syncope", "collapsed", "fell to the ground",
+            "no warning", "no prodrome", "without warning", "suddenly collapsed",
+            "during exercise", "during exertion", "while exercising", "while running",
+            "heart racing before", "irregular heartbeat", "arrhythmia",
+            "known heart condition", "known arrhythmia",
+        ],
+        "severity": "high",
+        "action": "Recommend same-day cardiac evaluation. Rule out arrhythmia and structural heart disease.",
+    },
+    {
+        "id": "rf_acute_hf_decompensation",
+        "name": "Acute heart failure decompensation",
+        # Orthopnea and PND are the most specific indicators — inability to lie
+        # flat or waking up gasping point strongly to pulmonary oedema.
+        "symptoms": ["shortness_of_breath", "swelling"],
+        "additional_indicators": [
+            "can't lie flat", "can't lie down", "sleeping upright", "sleeping in chair",
+            "propped up on pillows", "extra pillows to breathe",
+            "waking up gasping", "waking up breathless", "waking up short of breath",
+            "paroxysmal nocturnal", "orthopnea",
+            "rapid weight gain", "gained weight quickly", "gained 5 pounds", "gained 10 pounds",
+            "both legs swollen", "bilateral swelling", "legs are swollen",
+            "heart failure", "congestive heart failure", "chf", "known heart failure",
+        ],
+        "severity": "high",
+        "action": "Recommend same-day evaluation. Risk of acute pulmonary oedema.",
+    },
+    {
+        "id": "rf_severe_asthma",
+        "name": "Severe asthma exacerbation",
+        # Shortness_of_breath or cough as anchor. Severity comes from
+        # inhaler failure and accessory muscle use, not chest pain.
+        "symptoms": ["shortness_of_breath", "cough"],
+        "additional_indicators": [
+            "can't complete sentences", "can't speak in full sentences", "speaking in single words",
+            "rescue inhaler not working", "inhaler not helping", "albuterol not working",
+            "inhaler not working", "puffer not working",
+            "blue lips", "blue fingernails", "bluish lips", "cyanosis",
+            "sitting forward", "leaning forward to breathe",
+            "silent chest", "can't hear breathing",
+            "severe asthma attack", "status asthmaticus",
+            "using neck muscles", "using shoulder muscles to breathe",
+        ],
+        "severity": "high",
+        "action": "Advise calling 911 or going to ER. Severe exacerbation can be life-threatening.",
     },
     {
         "id": "rf_appendicitis",
         "name": "Possible appendicitis",
         "symptoms": ["abdominal_pain", "fever"],
-        "additional_indicators": ["right lower quadrant", "rebound tenderness", "loss of appetite", "nausea"],
+        "additional_indicators": [
+            "right lower quadrant", "right side of abdomen", "right lower abdomen",
+            "rebound tenderness", "worse when pressure released",
+            "loss of appetite", "not hungry", "no appetite",
+            "nausea", "vomiting",
+        ],
         "severity": "high",
         "action": "Recommend same-day urgent evaluation.",
     },
@@ -555,39 +774,25 @@ RED_FLAG_PATTERNS: list[dict] = [
         "id": "rf_dvt",
         "name": "Possible deep vein thrombosis",
         "symptoms": ["swelling"],
-        "additional_indicators": ["unilateral leg swelling", "calf pain", "warmth", "redness", "recent immobility"],
+        "additional_indicators": [
+            "unilateral leg swelling", "one leg swollen", "one leg bigger",
+            "calf pain", "calf tenderness", "calf cramp",
+            "warmth", "redness", "red leg", "hot leg",
+            "recent immobility", "long flight", "bed rest", "recent surgery",
+        ],
         "severity": "high",
         "action": "Recommend same-day evaluation. Advise against massaging the area.",
-    },
-    {
-        "id": "rf_cauda_equina",
-        "name": "Possible cauda equina syndrome",
-        "symptoms": ["back_pain"],
-        "additional_indicators": ["bowel incontinence", "bladder incontinence", "saddle anesthesia", "bilateral leg weakness"],
-        "severity": "critical",
-        "action": "Advise ER immediately. Surgical emergency.",
-    },
-    {
-        "id": "rf_sepsis",
-        "name": "Possible sepsis",
-        "symptoms": ["fever"],
-        "additional_indicators": ["confusion", "rapid breathing", "rapid heart rate", "very low blood pressure", "mottled skin"],
-        "severity": "critical",
-        "action": "Advise calling 911. Time-critical.",
-    },
-    {
-        "id": "rf_ectopic",
-        "name": "Possible ectopic pregnancy",
-        "symptoms": ["abdominal_pain"],
-        "additional_indicators": ["missed period", "vaginal bleeding", "shoulder pain", "positive pregnancy test"],
-        "severity": "critical",
-        "action": "Advise ER evaluation immediately.",
     },
     {
         "id": "rf_retinal_detachment",
         "name": "Possible retinal detachment",
         "symptoms": ["vision_changes"],
-        "additional_indicators": ["floaters", "flashes of light", "curtain over vision", "sudden onset"],
+        "additional_indicators": [
+            "floaters", "new floaters", "sudden floaters",
+            "flashes of light", "flashing lights",
+            "curtain over vision", "shadow over vision", "veil over vision",
+            "sudden onset", "sudden vision loss",
+        ],
         "severity": "high",
         "action": "Recommend same-day ophthalmologic evaluation.",
     },
