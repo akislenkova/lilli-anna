@@ -5,7 +5,6 @@ from collections.abc import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.config import settings
-from app.models.base import Base
 
 # ---------------------------------------------------------------------------
 # Convert the standard PostgreSQL URL to an async one (asyncpg driver).
@@ -63,6 +62,9 @@ async def init_db() -> None:
     called in production (set an env guard if needed).
     """
     from sqlalchemy import text
+
+    # Lazy import to avoid the circular: database → models → security → database
+    from app.models.base import Base  # noqa: PLC0415
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
