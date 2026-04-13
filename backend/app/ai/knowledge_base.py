@@ -470,6 +470,39 @@ CONDITION_QUESTIONS: dict[str, list[dict]] = {
         {"id": "in_duration", "text": "How long have you been experiencing sleep difficulties?", "question_type": "short_answer", "weight": 0.6},
         {"id": "in_habits", "text": "Do you use screens or caffeine close to bedtime?", "question_type": "yes_no", "weight": 0.5},
     ],
+    "herniated_disc": [
+        {"id": "hd_radiation", "text": "Does the pain radiate down your leg or arm?", "question_type": "yes_no", "weight": 0.9},
+        {"id": "hd_numbness", "text": "Do you have any numbness, tingling, or weakness in your legs or feet?", "question_type": "yes_no", "weight": 0.9},
+        {"id": "hd_bladder", "text": "Have you had any difficulty with bladder or bowel control?", "question_type": "yes_no", "weight": 0.95},
+        {"id": "hd_worse_sitting", "text": "Does the pain worsen when sitting or bending forward?", "question_type": "yes_no", "weight": 0.7},
+        {"id": "hd_onset", "text": "Did the pain start after a specific injury or activity, or come on gradually?", "question_type": "short_answer", "weight": 0.7},
+        {"id": "hd_treatment", "text": "Have you tried any treatments such as physical therapy, injections, or surgery?", "question_type": "short_answer", "weight": 0.6},
+        {"id": "hd_duration", "text": "How long have you been experiencing this?", "question_type": "short_answer", "weight": 0.6},
+        {"id": "hd_severity", "text": "On a scale of 1 to 10, how would you rate the pain on an average day?", "question_type": "short_answer", "weight": 0.7},
+        {"id": "hd_daily_impact", "text": "How much is this affecting your ability to work or do daily activities?", "question_type": "short_answer", "weight": 0.6},
+        {"id": "hd_imaging", "text": "Have you had any imaging done, such as an MRI or X-ray?", "question_type": "yes_no", "weight": 0.5},
+    ],
+    "sciatica": [
+        {"id": "sc_path", "text": "Does the pain travel from your lower back through your buttock and down your leg?", "question_type": "yes_no", "weight": 0.9},
+        {"id": "sc_one_side", "text": "Is the pain on one side only?", "question_type": "yes_no", "weight": 0.7},
+        {"id": "sc_worse_sit", "text": "Does sitting or driving make the pain worse?", "question_type": "yes_no", "weight": 0.7},
+        {"id": "sc_numbness", "text": "Do you have numbness or tingling in your leg or foot?", "question_type": "yes_no", "weight": 0.8},
+    ],
+    "radiculopathy": [
+        {"id": "rp_weakness", "text": "Do you have any muscle weakness in your arm or leg?", "question_type": "yes_no", "weight": 0.8},
+        {"id": "rp_sharp", "text": "Is the pain sharp, shooting, or electric-shock-like?", "question_type": "yes_no", "weight": 0.7},
+        {"id": "rp_neck_back", "text": "Is the pain coming from your neck or lower back?", "question_type": "short_answer", "weight": 0.6},
+    ],
+    "spinal_stenosis": [
+        {"id": "ss_walking", "text": "Does walking cause pain or weakness in your legs that goes away when you sit or lean forward?", "question_type": "yes_no", "weight": 0.9},
+        {"id": "ss_bilateral", "text": "Are both legs affected?", "question_type": "yes_no", "weight": 0.7},
+        {"id": "ss_history", "text": "Have you been diagnosed with spinal stenosis before?", "question_type": "yes_no", "weight": 0.8},
+    ],
+    "degenerative_disc_disease": [
+        {"id": "ddd_chronic", "text": "Has the pain been ongoing for months or years rather than a recent onset?", "question_type": "yes_no", "weight": 0.8},
+        {"id": "ddd_worse_morning", "text": "Is the pain worse in the morning or after periods of inactivity?", "question_type": "yes_no", "weight": 0.6},
+        {"id": "ddd_age", "text": "Have you been told that age-related changes to your spine are a factor?", "question_type": "yes_no", "weight": 0.5},
+    ],
 }
 
 

@@ -493,22 +493,31 @@ async def submit_answer(
         new_last_question_id = next_q.question_id
         ai_question_text = next_q.text
     else:
-        # No more condition-specific questions — wrap up
-        prev_ai_msgs = [m for m in session.messages if m.role == MessageRole.AI]
-        last_ai = prev_ai_msgs[-1].content if prev_ai_msgs else ""
-        if "anything else" in last_ai.lower():
-            ai_question_text = (
-                "Thank you for completing the intake questionnaire! Your responses "
-                "have been recorded and will help your physician prepare for your "
-                "appointment. You can now click 'Finish & Review' to review your "
-                "answers before submitting."
-            )
+        # No more condition-specific questions — fall back to domain questions
+        follow_up = _generate_follow_up(
+            question_number=session.questions_asked_count,
+            visit_type=session.visit_type,
+            symptoms=new_symptoms,
+            latest_answer=payload.answer_text,
+        )
+        if follow_up == "__WRAP_UP__":
+            prev_ai_msgs = [m for m in session.messages if m.role == MessageRole.AI]
+            last_ai = prev_ai_msgs[-1].content if prev_ai_msgs else ""
+            if "anything else" in last_ai.lower():
+                ai_question_text = (
+                    "Thank you for completing the intake questionnaire! Your responses "
+                    "have been recorded and will help your physician prepare for your "
+                    "appointment. You can now click 'Finish & Review' to review your "
+                    "answers before submitting."
+                )
+            else:
+                ai_question_text = (
+                    "Thank you for all that information. Is there anything else about "
+                    "your health that you'd like your physician to know about before "
+                    "your appointment?"
+                )
         else:
-            ai_question_text = (
-                "Thank you for all that information. Is there anything else about "
-                "your health that you'd like your physician to know about before "
-                "your appointment?"
-            )
+            ai_question_text = follow_up
 
     # Save updated AI context
     session.ai_context = {
