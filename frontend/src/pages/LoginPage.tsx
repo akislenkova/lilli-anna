@@ -167,7 +167,7 @@ export function LoginPage() {
           <p className="text-sm text-primary-200">
             AI that predicts visit length from patient intake data.
           </p>
-          <p className="mt-6 text-xs text-primary-400">
+          <p className="mt-6 text-xs text-primary-400 italic">
             Pending HIPAA compliance · All access is logged and audited.
           </p>
         </div>
