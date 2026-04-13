@@ -308,7 +308,7 @@ export default function IntakeFlow() {
               </svg>
             </div>
             <div>
-              <div className="text-sm font-medium text-gray-900">HIPAA Secured</div>
+              <div className="text-sm font-medium text-gray-900">Pending HIPAA Compliance</div>
               <div className="text-xs text-gray-500">
                 All your health information is encrypted end-to-end and stored securely.
               </div>
