@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { listAppointments } from "../../services/appointments";
+import { cancelAppointment, listAppointments } from "../../services/appointments";
 import { SlotPicker } from "./SlotPicker";
 import type { Appointment, AppointmentStatus } from "../../types";
 
@@ -65,6 +65,8 @@ export function PatientDashboard() {
   const [active, setActive] = useState<Appointment[]>([]);
   const [upcoming, setUpcoming] = useState<Appointment[]>([]);
   const [slotPickerOpen, setSlotPickerOpen] = useState<string | null>(null);
+  const [reschedulingId, setReschedulingId] = useState<string | null>(null);
+  const [cancelError, setCancelError] = useState<string | null>(null);
   const [past, setPast] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -101,6 +103,19 @@ export function PatientDashboard() {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  const handleCancel = async (id: string) => {
+    if (!window.confirm("Are you sure you want to cancel this appointment?")) return;
+    setCancelError(null);
+    try {
+      await cancelAppointment(id);
+      const cancelled = upcoming.find((a) => a.id === id);
+      setUpcoming((prev) => prev.filter((a) => a.id !== id));
+      if (cancelled) setPast((prev) => [{ ...cancelled, status: "cancelled" as AppointmentStatus }, ...prev]);
+    } catch {
+      setCancelError("Failed to cancel the appointment. Please try again.");
+    }
+  };
 
   if (loading) {
     return (
@@ -223,6 +238,13 @@ export function PatientDashboard() {
         <h2 className="text-lg font-semibold text-gray-800 mb-4">
           Upcoming Appointments
         </h2>
+
+        {cancelError && (
+          <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            {cancelError}
+          </div>
+        )}
+
         {upcoming.length === 0 ? (
           <div className="bg-gray-50 rounded-lg p-6 text-center text-gray-500">
             No upcoming appointments.{" "}
@@ -234,36 +256,78 @@ export function PatientDashboard() {
         ) : (
           <div className="space-y-3">
             {upcoming.map((appt) => (
-              <Link
-                key={appt.id}
-                to={`/appointments/${appt.id}`}
-                className="block bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition-shadow"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-gray-900">
-                      {appt.visit_type === "yearly_checkup"
-                        ? "Yearly Checkup"
-                        : "Specific Concern"}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      {appt.scheduled_start
-                        ? new Date(appt.scheduled_start).toLocaleDateString(
-                            undefined,
-                            {
-                              weekday: "long",
-                              month: "long",
-                              day: "numeric",
-                              hour: "numeric",
-                              minute: "2-digit",
-                            }
-                          )
-                        : "Time pending"}
-                    </p>
+              <div key={appt.id} className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow">
+                <Link
+                  to={`/appointments/${appt.id}`}
+                  className="block p-4"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-gray-900">
+                        {appt.visit_type === "yearly_checkup"
+                          ? "Yearly Checkup"
+                          : "Specific Concern"}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {appt.scheduled_start
+                          ? new Date(appt.scheduled_start).toLocaleDateString(
+                              undefined,
+                              {
+                                weekday: "long",
+                                month: "long",
+                                day: "numeric",
+                                hour: "numeric",
+                                minute: "2-digit",
+                              }
+                            )
+                          : "Time pending"}
+                      </p>
+                    </div>
+                    <StatusBadge status={appt.status} />
                   </div>
-                  <StatusBadge status={appt.status} />
+                </Link>
+
+                {/* Reschedule / Cancel actions */}
+                <div className="border-t border-gray-100 px-4 py-2.5">
+                  {reschedulingId === appt.id ? (
+                    <div className="py-2">
+                      <SlotPicker
+                        appointmentId={appt.id}
+                        duration={appt.ai_suggested_duration ?? 30}
+                        onBooked={(start) => {
+                          setUpcoming((prev) =>
+                            prev.map((a) =>
+                              a.id === appt.id ? { ...a, scheduled_start: start } : a
+                            )
+                          );
+                          setReschedulingId(null);
+                        }}
+                      />
+                      <button
+                        onClick={() => setReschedulingId(null)}
+                        className="mt-2 text-xs text-gray-500 hover:text-gray-700"
+                      >
+                        Never mind
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-4">
+                      <button
+                        onClick={() => setReschedulingId(appt.id)}
+                        className="text-sm font-medium text-primary-600 hover:text-primary-800"
+                      >
+                        Reschedule
+                      </button>
+                      <button
+                        onClick={() => handleCancel(appt.id)}
+                        className="text-sm font-medium text-red-600 hover:text-red-800"
+                      >
+                        Cancel appointment
+                      </button>
+                    </div>
+                  )}
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
         )}
