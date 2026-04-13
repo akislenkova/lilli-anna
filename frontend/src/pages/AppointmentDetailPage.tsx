@@ -1,3 +1,4 @@
+import { cancelAppointment } from "../services/appointments";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -20,6 +21,22 @@ export function AppointmentDetailPage() {
   const [loadingNurseTranscript, setLoadingNurseTranscript] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [cancelling, setCancelling] = useState(false);
+const [cancelError, setCancelError] = useState("");
+
+const handleCancel = async () => {
+  if (!id || !window.confirm("Are you sure you want to cancel this appointment?")) return;
+  setCancelling(true);
+  setCancelError("");
+  try {
+    const updated = await cancelAppointment(id);
+    setAppointment(updated);
+  } catch {
+    setCancelError("Failed to cancel appointment. Please try again.");
+  } finally {
+    setCancelling(false);
+  }
+};
 
   useEffect(() => {
     if (!id) return;
@@ -71,21 +88,35 @@ export function AppointmentDetailPage() {
 
       <div className="bg-white rounded-xl shadow p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-gray-900">
-            Appointment Details
-          </h2>
-          <span
-            className={`px-3 py-1 rounded-full text-xs font-medium ${
-              appointment.status === "completed"
-                ? "bg-green-100 text-green-700"
-                : appointment.status === "cancelled"
-                ? "bg-red-100 text-red-700"
-                : "bg-primary-100 text-primary-700"
-            }`}
-          >
-            {appointment.status.replace("_", " ").toUpperCase()}
-          </span>
-        </div>
+  <h2 className="text-xl font-semibold text-gray-900">
+    Appointment Details
+  </h2>
+  <div className="flex items-center gap-3">
+    {cancelError && (
+      <p className="text-sm text-red-600">{cancelError}</p>
+    )}
+    {appointment.status !== "cancelled" && appointment.status !== "completed" && (
+      <button
+        onClick={handleCancel}
+        disabled={cancelling}
+        className="px-4 py-1.5 rounded-lg text-sm font-medium bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 disabled:opacity-50 transition-colors"
+      >
+        {cancelling ? "Cancelling…" : "Cancel Appointment"}
+      </button>
+    )}
+    <span
+      className={`px-3 py-1 rounded-full text-xs font-medium ${
+        appointment.status === "completed"
+          ? "bg-green-100 text-green-700"
+          : appointment.status === "cancelled"
+          ? "bg-red-100 text-red-700"
+          : "bg-primary-100 text-primary-700"
+      }`}
+    >
+      {appointment.status.replace("_", " ").toUpperCase()}
+    </span>
+  </div>
+</div>
 
         <dl className="grid grid-cols-2 gap-4 text-sm">
           <div>
