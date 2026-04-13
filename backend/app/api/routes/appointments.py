@@ -710,13 +710,20 @@ async def update_appointment(
         if str(appointment.patient_id) != str(user_id):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
         # Patients can only reschedule
-        allowed_fields = {"scheduled_start", "scheduled_end"}
+        allowed_fields = {"scheduled_start", "scheduled_end", "status", "scheduler_override_reason"}
         update_data = payload.model_dump(exclude_unset=True)
         if not set(update_data.keys()).issubset(allowed_fields):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Patients can only update schedule times",
+                detail="Patients can only update schedule times or request reschedule",
             )
+        # Patients can only set status to reschedule_requested
+        if "status" in update_data and update_data["status"] != "reschedule_requested":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Patients can only request a reschedule",
+            )
+            
     elif role == Role.PHYSICIAN.value:
         if not await _verify_physician_access(db, current_user, appointment.physician_id):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")

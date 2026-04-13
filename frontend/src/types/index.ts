@@ -24,7 +24,8 @@ export type AppointmentStatus =
   | "in_progress"
   | "completed"
   | "cancelled"
-  | "no_show";
+  | "no_show"
+  | "reschedule_requested";
 
 export type VisitType = "yearly_checkup" | "specific_concern";
 

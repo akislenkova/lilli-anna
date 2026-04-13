@@ -1,4 +1,4 @@
-import { cancelAppointment } from "../services/appointments";
+import { cancelAppointment, requestReschedule } from "../services/appointments";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -35,6 +35,27 @@ const handleCancel = async () => {
     setCancelError("Failed to cancel appointment. Please try again.");
   } finally {
     setCancelling(false);
+  }
+};
+
+const [showRescheduleForm, setShowRescheduleForm] = useState(false);
+const [rescheduleReason, setRescheduleReason] = useState("");
+const [rescheduling, setRescheduling] = useState(false);
+const [rescheduleError, setRescheduleError] = useState("");
+
+const handleRescheduleRequest = async () => {
+  if (!id) return;
+  setRescheduling(true);
+  setRescheduleError("");
+  try {
+    const updated = await requestReschedule(id, rescheduleReason);
+    setAppointment(updated);
+    setShowRescheduleForm(false);
+    setRescheduleReason("");
+  } catch {
+    setRescheduleError("Failed to submit reschedule request. Please try again.");
+  } finally {
+    setRescheduling(false);
   }
 };
 
@@ -87,10 +108,25 @@ const handleCancel = async () => {
       {redFlags.length > 0 && <RedFlagBanner flags={redFlags} />}
 
       <div className="bg-white rounded-xl shadow p-6">
-        <div className="flex items-center justify-between mb-4">
-  <h2 className="text-xl font-semibold text-gray-900">
-    Appointment Details
-  </h2>
+<div className="flex items-center justify-between mb-4">
+  <div>
+    <h2 className="text-xl font-semibold text-gray-900">
+      Appointment Details
+    </h2>
+    <span
+      className={`mt-1 inline-block px-3 py-1 rounded-full text-xs font-medium ${
+        appointment.status === "completed"
+          ? "bg-green-100 text-green-700"
+          : appointment.status === "cancelled"
+          ? "bg-red-100 text-red-700"
+          : appointment.status === "reschedule_requested"
+          ? "bg-yellow-100 text-yellow-700"
+          : "bg-primary-100 text-primary-700"
+      }`}
+    >
+      {appointment.status.replace(/_/g, " ").toUpperCase()}
+    </span>
+  </div>
   <div className="flex items-center gap-3">
     {cancelError && (
       <p className="text-sm text-red-600">{cancelError}</p>
@@ -104,20 +140,48 @@ const handleCancel = async () => {
         {cancelling ? "Cancelling…" : "Cancel Appointment"}
       </button>
     )}
-    <span
-      className={`px-3 py-1 rounded-full text-xs font-medium ${
-        appointment.status === "completed"
-          ? "bg-green-100 text-green-700"
-          : appointment.status === "cancelled"
-          ? "bg-red-100 text-red-700"
-          : "bg-primary-100 text-primary-700"
-      }`}
-    >
-      {appointment.status.replace("_", " ").toUpperCase()}
-    </span>
+    {appointment.status !== "cancelled" &&
+      appointment.status !== "completed" &&
+      appointment.status !== "reschedule_requested" &&
+      user?.role === "patient" && (
+      <button
+        onClick={() => setShowRescheduleForm(!showRescheduleForm)}
+        className="px-4 py-1.5 rounded-lg text-sm font-medium bg-yellow-50 text-yellow-700 border border-yellow-200 hover:bg-yellow-100 transition-colors"
+      >
+        Request Reschedule
+      </button>
+    )}
   </div>
 </div>
 
+{showRescheduleForm && (
+  <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+    <p className="text-sm font-medium text-yellow-800 mb-2">Reason for rescheduling (optional)</p>
+    <textarea
+      value={rescheduleReason}
+      onChange={(e) => setRescheduleReason(e.target.value)}
+      placeholder="e.g. conflict with work schedule..."
+      className="w-full text-sm border border-yellow-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-white"
+      rows={2}
+    />
+    {rescheduleError && <p className="text-sm text-red-600 mt-1">{rescheduleError}</p>}
+    <div className="flex gap-2 mt-3">
+      <button
+        onClick={handleRescheduleRequest}
+        disabled={rescheduling}
+        className="px-4 py-1.5 rounded-lg text-sm font-medium bg-yellow-600 text-white hover:bg-yellow-700 disabled:opacity-50 transition-colors"
+      >
+        {rescheduling ? "Submitting…" : "Submit Request"}
+      </button>
+      <button
+        onClick={() => setShowRescheduleForm(false)}
+        className="px-4 py-1.5 rounded-lg text-sm font-medium text-yellow-700 hover:bg-yellow-100 transition-colors"
+      >
+        Cancel
+      </button>
+    </div>
+  </div>
+)}
         <dl className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <dt className="text-gray-500">Visit Type</dt>

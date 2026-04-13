@@ -35,6 +35,7 @@ class AppointmentStatus(str, enum.Enum):
     COMPLETED = "completed"
     CANCELLED = "cancelled"
     RESCHEDULED = "rescheduled"
+    RESCHEDULE_REQUESTED = "reschedule_requested"
 
 
 class VisitType(str, enum.Enum):

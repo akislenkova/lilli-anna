@@ -8,6 +8,14 @@ interface AppointmentListResponse {
   per_page: number;
 }
 
+export async function requestReschedule(id: string, reason?: string): Promise<Appointment> {
+  const { data } = await api.put<Appointment>(`/appointments/${id}`, {
+    status: "reschedule_requested",
+    scheduler_override_reason: reason,
+  });
+  return data;
+}
+
 export async function listAppointments(
   filters?: Record<string, unknown>,
 ): Promise<Appointment[]> {
