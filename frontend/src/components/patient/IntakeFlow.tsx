@@ -88,6 +88,14 @@ export default function IntakeFlow() {
     setError(null);
     try {
       const s = await conversationService.startConversation(visitType, true);
+      // If the session already has patient messages it's a resumed session —
+      // don't submit the new concern text as an extra answer.
+      const isResumed = s.messages.some((m) => m.role === "patient");
+      if (isResumed) {
+        setSession(s);
+        setStep("conversation");
+        return;
+      }
       const updated = await conversationService.submitAnswer(s.id, initialConcern.trim());
       setSession(updated);
       setStep("conversation");

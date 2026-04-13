@@ -67,6 +67,7 @@ export function PatientDashboard() {
   const [slotPickerOpen, setSlotPickerOpen] = useState<string | null>(null);
   const [reschedulingId, setReschedulingId] = useState<string | null>(null);
   const [cancelError, setCancelError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [past, setPast] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -103,6 +104,17 @@ export function PatientDashboard() {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  const handleDeleteActive = async (id: string) => {
+    if (!window.confirm("Remove this intake? You can start a new one at any time.")) return;
+    setDeleteError(null);
+    try {
+      await cancelAppointment(id);
+      setActive((prev) => prev.filter((a) => a.id !== id));
+    } catch {
+      setDeleteError("Failed to remove the intake. Please try again.");
+    }
+  };
 
   const handleCancel = async (id: string) => {
     if (!window.confirm("Are you sure you want to cancel this appointment?")) return;
@@ -151,54 +163,76 @@ export function PatientDashboard() {
           <h2 className="text-lg font-semibold text-gray-800 mb-4">
             Active
           </h2>
+
+          {deleteError && (
+            <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              {deleteError}
+            </div>
+          )}
+
           <div className="space-y-3">
             {active.map((appt) => (
-              <Link
-                key={appt.id}
-                to={appt.status === "pending_intake" ? `/intake?appointmentId=${appt.id}` : `/appointments/${appt.id}`}
-                className="block rounded-xl bg-white shadow-sm hover:shadow-md transition-shadow"
-              >
-                <div className="flex items-center gap-4 p-4">
-                  <StatusIcon status={appt.status} />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-900">
-                      {appt.visit_type === "yearly_checkup"
-                        ? "Yearly Checkup"
-                        : "Specific Concern"}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      {appt.status === "pending_intake"
-                        ? "Complete your intake to continue"
-                        : "Awaiting scheduling — a coordinator will reach out soon"}
-                    </p>
-                    <p className="mt-0.5 text-xs text-gray-400">
-                      Created {new Date(appt.created_at).toLocaleDateString(undefined, {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </p>
+              <div key={appt.id} className="rounded-xl bg-white shadow-sm hover:shadow-md transition-shadow">
+                <Link
+                  to={appt.status === "pending_intake" ? `/intake?appointmentId=${appt.id}` : `/appointments/${appt.id}`}
+                  className="block"
+                >
+                  <div className="flex items-center gap-4 p-4">
+                    <StatusIcon status={appt.status} />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-900">
+                        {appt.visit_type === "yearly_checkup"
+                          ? "Yearly Checkup"
+                          : "Specific Concern"}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {appt.status === "pending_intake"
+                          ? "Complete your intake to continue"
+                          : "Awaiting scheduling — a coordinator will reach out soon"}
+                      </p>
+                      <p className="mt-0.5 text-xs text-gray-400">
+                        Created {new Date(appt.created_at).toLocaleDateString(undefined, {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </p>
+                    </div>
+                    <StatusBadge status={appt.status} />
                   </div>
-                  <StatusBadge status={appt.status} />
-                </div>
+                </Link>
 
-                {/* Progress indicator for pending intake */}
+                {/* Progress indicator / slot picker / delete */}
                 {appt.status === "pending_intake" && (
-                  <div className="border-t border-gray-100 px-4 py-2.5">
-                    <div className="flex items-center gap-2">
+                  <div className="border-t border-gray-100 px-4 py-2.5 flex items-center gap-4">
+                    <div className="flex items-center gap-2 flex-1">
                       <div className="h-1.5 flex-1 rounded-full bg-gray-100">
                         <div className="h-1.5 w-1/4 rounded-full bg-amber-400" />
                       </div>
                       <span className="text-xs text-amber-600 font-medium">Intake needed</span>
                     </div>
+                    <button
+                      onClick={() => handleDeleteActive(appt.id)}
+                      className="text-xs font-medium text-red-500 hover:text-red-700"
+                    >
+                      Delete
+                    </button>
                   </div>
                 )}
                 {appt.status === "intake_complete" && (
                   <div className="border-t border-gray-100 px-4 py-3">
                     {appt.scheduled_start ? (
-                      <p className="text-xs text-emerald-600 font-medium">
-                        Requested: {new Date(appt.scheduled_start).toLocaleString()} — awaiting confirmation
-                      </p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs text-emerald-600 font-medium">
+                          Requested: {new Date(appt.scheduled_start).toLocaleString()} — awaiting confirmation
+                        </p>
+                        <button
+                          onClick={() => handleDeleteActive(appt.id)}
+                          className="text-xs font-medium text-red-500 hover:text-red-700"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     ) : slotPickerOpen === appt.id ? (
                       <div onClick={(e) => e.preventDefault()}>
                         <SlotPicker
@@ -215,19 +249,27 @@ export function PatientDashboard() {
                         />
                       </div>
                     ) : (
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setSlotPickerOpen(appt.id);
-                        }}
-                        className="text-sm text-primary-600 font-medium hover:text-primary-800"
-                      >
-                        Pick a time that works for you →
-                      </button>
+                      <div className="flex items-center justify-between">
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setSlotPickerOpen(appt.id);
+                          }}
+                          className="text-sm text-primary-600 font-medium hover:text-primary-800"
+                        >
+                          Pick a time that works for you →
+                        </button>
+                        <button
+                          onClick={() => handleDeleteActive(appt.id)}
+                          className="text-xs font-medium text-red-500 hover:text-red-700"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     )}
                   </div>
                 )}
-              </Link>
+              </div>
             ))}
           </div>
         </section>
