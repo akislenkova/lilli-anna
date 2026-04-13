@@ -164,7 +164,7 @@ export function LoginPage() {
             Schedule patients by need,{" "}
             <span className="font-semibold text-white">not guesswork.</span>
           </p>
-          <p className="text-sm text-primary-200">
+          <p className="text-sm text-primary-200 italic">
             AI that predicts visit length from patient intake data.
           </p>
           <p className="mt-6 text-xs text-primary-400 italic">
