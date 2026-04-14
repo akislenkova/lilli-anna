@@ -38,7 +38,7 @@ export function ConflictsPage() {
       ) : (
         <div className="space-y-4">
           {conflicts.map((c, i) => (
-            <div key={i} className="bg-white rounded-xl shadow p-5 border-l-4 border-red-500">
+            <div key={i} className="bg-white/70 backdrop-blur-sm rounded-xl shadow p-5 border-l-4 border-red-500">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="font-medium text-gray-900">Conflict Detected</p>

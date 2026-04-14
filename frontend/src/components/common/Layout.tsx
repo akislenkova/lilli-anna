@@ -78,13 +78,29 @@ const iconMap: Record<string, React.ReactNode> = {
 
 function roleBadgeColor(role: string): string {
   switch (role) {
-    case "patient":   return "bg-primary-50 text-primary-700";
-    case "scheduler": return "bg-emerald-50 text-emerald-700";
+    case "patient":   return "bg-blue-50 text-blue-700";
+    case "scheduler": return "bg-sky-50 text-sky-700";
     case "nurse":     return "bg-violet-50 text-violet-700";
-    case "physician": return "bg-amber-50 text-amber-700";
+    case "physician": return "bg-indigo-50 text-indigo-700";
     case "admin":     return "bg-red-50 text-red-700";
     default:          return "bg-gray-100 text-gray-600";
   }
+}
+
+function LoopLogo({ size = 18, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 36 36"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+    >
+      <path d="M31 18a13 13 0 1 1-2.6-7.9" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
+      <path d="M28 6.5l.5 5.4-5.4.5" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
 }
 
 export default function Layout({ children }: { children: React.ReactNode }) {
@@ -98,25 +114,30 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const pageTitle = navItems.find((n) => n.path === location.pathname)?.label ?? "Anilla";
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
+    <div
+      className="flex h-screen overflow-hidden"
+      style={{
+        background: "linear-gradient(160deg, #dce8f5 0%, #c4d9ee 45%, #b0cceb 100%)",
+      }}
+    >
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black/30 lg:hidden"
+          className="fixed inset-0 z-30 bg-black/20 backdrop-blur-sm lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
-      {/* Sidebar — light, Tandem-style */}
+      {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-60 flex-col bg-white border-r border-gray-200 transition-transform lg:static lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r border-white/50 bg-white/70 backdrop-blur-md transition-transform lg:static lg:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         {/* Logo */}
-        <div className="flex h-16 items-center gap-2.5 border-b border-gray-100 px-5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-600 text-white text-sm font-bold">
-            A
+        <div className="flex h-16 items-center gap-2.5 border-b border-white/50 px-5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-900 text-white">
+            <LoopLogo size={16} />
           </div>
           <div>
             <div className="text-sm font-semibold text-gray-900 tracking-tight">Anilla</div>
@@ -133,13 +154,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 key={item.path}
                 to={item.path}
                 onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
                   active
-                    ? "bg-primary-50 text-primary-700"
-                    : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+                    ? "bg-gray-900 text-white shadow-sm"
+                    : "text-gray-600 hover:bg-white/60 hover:text-gray-900"
                 }`}
               >
-                <span className={active ? "text-primary-600" : "text-gray-400"}>
+                <span className={active ? "text-white" : "text-gray-400"}>
                   {iconMap[item.icon] ?? null}
                 </span>
                 {item.label}
@@ -149,9 +170,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </nav>
 
         {/* User section */}
-        <div className="border-t border-gray-100 p-4">
+        <div className="border-t border-white/50 p-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-700 text-xs font-semibold uppercase">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700 text-xs font-semibold uppercase">
               {user.first_name[0]}{user.last_name[0]}
             </div>
             <div className="flex-1 min-w-0">
@@ -169,10 +190,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       {/* Main area */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Top header */}
-        <header className="flex h-16 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 lg:px-6">
+        <header className="flex h-16 shrink-0 items-center justify-between border-b border-white/50 bg-white/60 px-4 backdrop-blur-md lg:px-6">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 lg:hidden"
+            className="rounded-xl p-2 text-gray-500 hover:bg-white/60 lg:hidden"
             aria-label="Open menu"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -193,7 +214,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </span>
             <button
               onClick={logout}
-              className="rounded-lg border border-gray-200 px-4 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+              className="rounded-xl border border-gray-200/80 bg-white/60 px-4 py-1.5 text-sm font-medium text-gray-600 hover:bg-white/80 transition-colors"
             >
               Sign out
             </button>

@@ -298,7 +298,7 @@ export function PatientDashboard() {
         ) : (
           <div className="space-y-3">
             {upcoming.map((appt) => (
-              <div key={appt.id} className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow">
+              <div key={appt.id} className="bg-white/70 backdrop-blur-sm rounded-xl shadow-sm hover:shadow-md transition-shadow">
                 <Link
                   to={`/appointments/${appt.id}`}
                   className="block p-4"
@@ -388,7 +388,7 @@ export function PatientDashboard() {
               <Link
                 key={appt.id}
                 to={`/appointments/${appt.id}`}
-                className="block bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition-shadow opacity-75"
+                className="block bg-white/70 backdrop-blur-sm rounded-xl shadow-sm p-4 hover:shadow-md transition-shadow opacity-75"
               >
                 <div className="flex items-center justify-between">
                   <div>

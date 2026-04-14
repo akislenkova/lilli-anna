@@ -50,7 +50,7 @@ export function PriorityPage() {
             <Link
               key={p.appointment_id}
               to={`/appointments/${p.appointment_id}`}
-              className="block bg-white rounded-xl shadow p-5 hover:shadow-md transition-shadow"
+              className="block bg-white/70 backdrop-blur-sm rounded-xl shadow p-5 hover:shadow-md transition-shadow"
             >
               <div className="flex items-center gap-4">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-700 font-bold text-sm">

@@ -63,7 +63,7 @@ export function AppointmentMessageThread({ appointmentId }: Props) {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow">
+    <div className="bg-white/70 backdrop-blur-sm rounded-xl shadow">
       <button
         onClick={() => setOpen(!open)}
         className="flex items-center justify-between w-full p-5"

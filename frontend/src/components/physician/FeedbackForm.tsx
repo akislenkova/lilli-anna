@@ -40,7 +40,7 @@ export function FeedbackForm({ appointmentId }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow p-6">
+    <form onSubmit={handleSubmit} className="bg-white/70 backdrop-blur-sm rounded-xl shadow p-6">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">
         Post-Appointment Feedback
       </h3>

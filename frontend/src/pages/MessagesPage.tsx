@@ -45,7 +45,7 @@ export function MessagesPage() {
           {messages.map((msg) => (
             <div
               key={msg.id}
-              className={`bg-white rounded-xl shadow-sm p-4 flex items-start gap-4 transition-colors ${
+              className={`bg-white/70 backdrop-blur-sm rounded-xl shadow-sm p-4 flex items-start gap-4 transition-colors ${
                 !msg.is_read ? "border-l-4 border-primary-500" : ""
               }`}
             >

@@ -42,7 +42,7 @@ export function PhysicianAppointmentView({ appointment }: Props) {
   return (
     <div className="space-y-6">
       {/* AI Summary Card */}
-      <div className="bg-white rounded-xl shadow p-6">
+      <div className="bg-white/70 backdrop-blur-sm rounded-xl shadow p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
           AI Intake Summary
         </h3>
@@ -92,7 +92,7 @@ export function PhysicianAppointmentView({ appointment }: Props) {
       </div>
 
       {/* Patient Info */}
-      <div className="bg-white rounded-xl shadow p-6">
+      <div className="bg-white/70 backdrop-blur-sm rounded-xl shadow p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
           Patient Information
         </h3>
@@ -129,7 +129,7 @@ export function PhysicianAppointmentView({ appointment }: Props) {
       </div>
 
       {/* Epic Chart */}
-      <div className="bg-white rounded-xl shadow p-6">
+      <div className="bg-white/70 backdrop-blur-sm rounded-xl shadow p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-50">
@@ -164,7 +164,7 @@ export function PhysicianAppointmentView({ appointment }: Props) {
       </div>
 
       {/* Conversation Transcript */}
-      <div className="bg-white rounded-xl shadow p-6">
+      <div className="bg-white/70 backdrop-blur-sm rounded-xl shadow p-6">
         <button
           onClick={() => setShowTranscript(!showTranscript)}
           className="flex items-center justify-between w-full"

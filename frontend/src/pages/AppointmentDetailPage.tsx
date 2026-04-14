@@ -107,7 +107,7 @@ const handleRescheduleRequest = async () => {
     <div className="space-y-6">
       {redFlags.length > 0 && <RedFlagBanner flags={redFlags} />}
 
-      <div className="bg-white rounded-xl shadow p-6">
+      <div className="bg-white/70 backdrop-blur-sm rounded-xl shadow p-6">
 <div className="flex items-center justify-between mb-4">
   <div>
     <h2 className="text-xl font-semibold text-gray-900">
@@ -228,7 +228,7 @@ const handleRescheduleRequest = async () => {
       )}
 
       {user?.role === "scheduler" && (
-        <div className="bg-white rounded-xl shadow p-6">
+        <div className="bg-white/70 backdrop-blur-sm rounded-xl shadow p-6">
           <h3 className="font-semibold text-gray-900 mb-3">
             Patient Reason for Visit
           </h3>
@@ -252,14 +252,14 @@ const handleRescheduleRequest = async () => {
       {user?.role === "nurse" && (
         <>
           {report?.summary && (
-            <div className="bg-white rounded-xl shadow p-6">
+            <div className="bg-white/70 backdrop-blur-sm rounded-xl shadow p-6">
               <h3 className="font-semibold text-gray-900 mb-3">AI Intake Summary</h3>
               <p className="text-gray-700 text-sm">{report.summary}</p>
             </div>
           )}
 
           {/* Intake conversation — nurses can read, no medical record or Epic */}
-          <div className="bg-white rounded-xl shadow p-6">
+          <div className="bg-white/70 backdrop-blur-sm rounded-xl shadow p-6">
             <button
               onClick={() => setShowNurseTranscript(!showNurseTranscript)}
               className="flex items-center justify-between w-full"

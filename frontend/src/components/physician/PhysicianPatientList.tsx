@@ -78,7 +78,7 @@ export function PhysicianPatientList() {
         </div>
       ) : filter === "intake_complete" ? (
         /* Checklist view for needs-review */
-        <div className="bg-white rounded-xl shadow-sm divide-y divide-gray-100">
+        <div className="bg-white/70 backdrop-blur-sm rounded-xl shadow-sm divide-y divide-gray-100">
           {filtered.map((appt) => (
             <Link
               key={appt.id}
@@ -112,7 +112,7 @@ export function PhysicianPatientList() {
             <Link
               key={appt.id}
               to={`/appointments/${appt.id}`}
-              className="block bg-white rounded-xl shadow-sm p-5 hover:shadow-md transition-shadow"
+              className="block bg-white/70 backdrop-blur-sm rounded-xl shadow-sm p-5 hover:shadow-md transition-shadow"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">

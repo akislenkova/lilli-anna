@@ -99,7 +99,7 @@ export function PhysicianDashboard() {
                 <Link
                   key={appt.id}
                   to={`/appointments/${appt.id}`}
-                  className="flex items-center gap-4 bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition-shadow"
+                  className="flex items-center gap-4 bg-white/70 backdrop-blur-sm rounded-xl shadow-sm p-4 hover:shadow-md transition-shadow"
                 >
                   <div className="text-sm font-semibold text-primary-700 w-16 shrink-0">
                     {new Date(appt.scheduled_start!).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}

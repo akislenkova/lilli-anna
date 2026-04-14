@@ -83,7 +83,7 @@ export function SchedulerDashboard() {
             return (
               <div
                 key={appt.id}
-                className={`bg-white rounded-xl shadow p-5 ${
+                className={`bg-white/70 backdrop-blur-sm rounded-xl shadow p-5 ${
                   hasConflict ? "border-l-4 border-amber-500" : ""
                 }`}
               >
