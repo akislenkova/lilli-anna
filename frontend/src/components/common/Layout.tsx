@@ -121,7 +121,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         }`}
       >
         {/* Logo */}
-        <div className="flex h-16 items-center border-b border-white/50 px-4">
+        <div className="flex items-start border-b border-white/50 px-2 pt-2 pb-2">
           <img src={logoImg} alt="Anilla" className="h-10 w-auto object-contain" />
         </div>
 
