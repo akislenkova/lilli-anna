@@ -2,9 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-// ─── Anilla loop logo ─────────────────────────────────────────────────────────
-// The loop mark represents continuous optimization — intake in, schedule out.
-function LoopLogo({ size = 36, className = "" }: { size?: number; className?: string }) {
+// ─── Logo mark ────────────────────────────────────────────────────────────────
+function LoopLogo({ size = 20, className = "" }: { size?: number; className?: string }) {
   return (
     <svg
       width={size}
@@ -31,90 +30,34 @@ function LoopLogo({ size = 36, className = "" }: { size?: number; className?: st
   );
 }
 
-// ─── Left-panel flow diagram ──────────────────────────────────────────────────
-
-const INTAKE_ITEMS = [
-  { text: "chest tight, hard to breathe · 3 days", active: true },
-  { text: "checking in on blood pressure meds" },
-  { text: "anxious, not sleeping well lately" },
-  { text: "just my annual checkup" },
-];
-
-const SCHEDULE_ITEMS: { label: string; pct: string; shade: "bright" | "mid" | "dim" }[] = [
-  { label: "60 min", pct: "82%",  shade: "bright" },
-  { label: "20 min", pct: "28%",  shade: "mid"    },
-  { label: "40 min", pct: "56%",  shade: "mid"    },
-  { label: "15 min", pct: "22%",  shade: "dim"    },
-];
-
-const BAR_COLORS: Record<typeof SCHEDULE_ITEMS[number]["shade"], string> = {
-  bright: "bg-accent-400/80",
-  mid:    "bg-accent-400/45",
-  dim:    "bg-white/20",
-};
-
-function FlowDiagram() {
+// ─── Icons ────────────────────────────────────────────────────────────────────
+function EnvelopeIcon() {
   return (
-    <div className="w-full rounded-2xl border border-white/10 bg-white/[0.06] p-5 backdrop-blur-sm">
-      <div className="grid grid-cols-[1fr_56px_1fr] items-center gap-3">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="4" width="20" height="16" rx="2" />
+      <path d="M2 7l10 7 10-7" />
+    </svg>
+  );
+}
 
-        {/* ── Input: messy patient language ── */}
-        <div>
-          <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-primary-300">
-            Patient says
-          </p>
-          <div className="flex flex-col gap-1.5">
-            {INTAKE_ITEMS.map((item, i) => (
-              <div
-                key={i}
-                className={`rounded-lg px-3 py-2 text-[11px] leading-snug ${
-                  item.active
-                    ? "border border-white/20 bg-white/15 text-white"
-                    : "bg-white/[0.06] text-white/55"
-                }`}
-              >
-                "{item.text}"
-              </div>
-            ))}
-          </div>
-        </div>
+function LockIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="5" y="11" width="14" height="10" rx="2" />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+    </svg>
+  );
+}
 
-        {/* ── Center: AI processor ── */}
-        <div className="flex flex-col items-center gap-1.5">
-          <div className="rounded-full border border-accent-400/30 bg-accent-500/20 p-3">
-            <LoopLogo size={20} className="text-accent-300" />
-          </div>
-          <span className="text-[9px] font-bold uppercase tracking-widest text-accent-300">
-            AI
-          </span>
-        </div>
-
-        {/* ── Output: clean time blocks ── */}
-        <div>
-          <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-primary-300">
-            Appointment
-          </p>
-          <div className="flex flex-col gap-1.5">
-            {SCHEDULE_ITEMS.map((item, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <div
-                  className={`h-7 flex-shrink-0 rounded ${BAR_COLORS[item.shade]}`}
-                  style={{ width: item.pct }}
-                />
-                <span className="whitespace-nowrap text-[11px] font-semibold text-white">
-                  {item.label}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
+function SparkleIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z" />
+    </svg>
   );
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
-
 export function LoginPage() {
   const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
@@ -138,61 +81,35 @@ export function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-
-      {/* ── Left panel ─────────────────────────────────────────────────────── */}
-      <div
-        className="hidden flex-col justify-between p-12 lg:flex lg:w-1/2"
-        style={{ background: "linear-gradient(155deg, #1a5c54 0%, #162847 100%)" }}
-      >
-        {/* Logo */}
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 text-white">
-            <LoopLogo size={24} />
-          </div>
-          <span className="text-xl font-semibold tracking-tight text-white">Anilla</span>
+    <div
+      className="relative flex min-h-screen flex-col items-center justify-center px-4"
+      style={{
+        background: "linear-gradient(160deg, #dce8f5 0%, #c8ddf0 40%, #b8cfe8 100%)",
+      }}
+    >
+      {/* Logo */}
+      <div className="mb-8 flex items-center gap-2.5">
+        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-900 text-white">
+          <LoopLogo size={18} />
         </div>
-
-        {/* Flow illustration */}
-        <div className="mx-auto w-full max-w-md">
-          <FlowDiagram />
-        </div>
-
-        {/* Headline */}
-        <div>
-          <p className="mb-3 text-3xl font-light leading-snug text-primary-100">
-            Schedule patients by need,{" "}
-            <span className="font-semibold text-white">not guesswork.</span>
-          </p>
-          <p className="text-sm text-primary-200 italic">
-            AI that predicts visit length from patient intake data.
-          </p>
-          <p className="mt-6 text-xs text-primary-400 italic">
-            Pending HIPAA compliance · All access is logged and audited.
-          </p>
-        </div>
+        <span className="text-xl font-semibold tracking-tight text-gray-900">Anilla</span>
       </div>
 
-      {/* ── Right panel ────────────────────────────────────────────────────── */}
-      <div className="flex flex-1 flex-col items-center justify-center px-6 py-12">
-        <div className="w-full max-w-sm">
+      {/* Card */}
+      <div className="w-full max-w-sm rounded-2xl bg-white/70 p-8 shadow-sm backdrop-blur-sm">
+        <h1 className="mb-1 text-2xl font-bold text-gray-900">Welcome back</h1>
+        <p className="mb-6 text-sm text-gray-500">Sign in to continue to your account</p>
 
-          {/* Mobile logo */}
-          <div className="mb-10 flex items-center gap-2.5 lg:hidden">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-600 text-white">
-              <LoopLogo size={22} />
-            </div>
-            <span className="text-lg font-semibold tracking-tight text-gray-900">Anilla</span>
-          </div>
-
-          <h2 className="mb-1 text-2xl font-semibold text-gray-900">Welcome back</h2>
-          <p className="mb-8 text-sm text-gray-500">Sign in to continue</p>
-
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-gray-700">
-                Email
-              </label>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Email */}
+          <div>
+            <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-gray-700">
+              Email
+            </label>
+            <div className="relative">
+              <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-400">
+                <EnvelopeIcon />
+              </span>
               <input
                 id="email"
                 type="email"
@@ -200,55 +117,85 @@ export function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@clinic.com"
-                className="w-full rounded-lg border border-gray-200 bg-white px-3.5 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-10 pr-3.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
               />
             </div>
+          </div>
 
-            <div>
-              <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-gray-700">
-                Password
-              </label>
+          {/* Password */}
+          <div>
+            <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-gray-700">
+              Password
+            </label>
+            <div className="relative">
+              <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-400">
+                <LockIcon />
+              </span>
               <input
                 id="password"
                 type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-lg border border-gray-200 bg-white px-3.5 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                placeholder="Enter your password"
+                className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-10 pr-3.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
               />
             </div>
-
-            {error && (
-              <div className="rounded-lg border border-red-100 bg-red-50 px-4 py-2.5 text-sm text-red-700">
-                {error}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="mt-2 w-full rounded-lg bg-primary-600 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-700 disabled:opacity-50"
-            >
-              {loading ? "Signing in…" : "Sign in"}
-            </button>
-
-            <p className="text-center text-xs text-gray-400">
-              We'll route you to the right view automatically
-            </p>
-          </form>
-
-          {/* Trust indicator */}
-          <div className="mt-8 flex items-center gap-3 rounded-xl border border-primary-100 bg-primary-50 px-4 py-3">
-            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary-100">
-              <LoopLogo size={18} className="text-primary-600" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-primary-700">95.5% scheduling accuracy</p>
-              <p className="text-xs text-gray-500">Validated on 22,000+ patient records</p>
-            </div>
           </div>
+
+          {/* Forgot password */}
+          <div className="flex justify-end">
+            <button
+              type="button"
+              className="text-xs text-gray-500 hover:text-gray-700"
+            >
+              Forgot password?
+            </button>
+          </div>
+
+          {error && (
+            <div className="rounded-lg border border-red-100 bg-red-50 px-4 py-2.5 text-sm text-red-700">
+              {error}
+            </div>
+          )}
+
+          {/* Submit */}
+          <button
+            type="submit"
+            disabled={loading}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-gray-900 py-3 text-sm font-semibold text-white transition-colors hover:bg-gray-800 disabled:opacity-50"
+          >
+            {loading ? "Signing in…" : (
+              <>
+                Sign in
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 12h14M13 6l6 6-6 6" />
+                </svg>
+              </>
+            )}
+          </button>
+        </form>
+      </div>
+
+      {/* AI tagline card */}
+      <div className="mt-4 w-full max-w-sm rounded-2xl bg-white/60 px-5 py-4 backdrop-blur-sm shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-500">
+            <SparkleIcon />
+          </div>
+          <p className="text-sm text-gray-600">
+            AI scheduling for tailoring appointments to patient needs
+          </p>
         </div>
       </div>
+
+      {/* Help button */}
+      <button
+        className="fixed bottom-5 right-5 flex h-9 w-9 items-center justify-center rounded-full bg-gray-800 text-white text-sm font-semibold shadow-md hover:bg-gray-700"
+        aria-label="Help"
+      >
+        ?
+      </button>
     </div>
   );
 }
