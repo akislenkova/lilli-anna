@@ -151,7 +151,7 @@ export function LoginPage() {
     <div
       className="flex min-h-screen"
       style={{
-        background: "linear-gradient(160deg, #dce8f5 0%, #c4d9ee 45%, #b0cceb 100%)",
+        background: "linear-gradient(160deg, #eaf6fb 0%, #d8eef7 50%, #cce8f4 100%)",
       }}
     >
       {/* ── Left panel ─────────────────────────────────────────────────────── */}
