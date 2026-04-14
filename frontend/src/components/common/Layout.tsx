@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { MessageBell } from "./MessageBell";
+import logoImg from "../../assets/logo.png";
 
 interface NavItem {
   label: string;
@@ -87,21 +88,6 @@ function roleBadgeColor(role: string): string {
   }
 }
 
-function LoopLogo({ size = 18, className = "" }: { size?: number; className?: string }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 36 36"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-    >
-      <path d="M31 18a13 13 0 1 1-2.6-7.9" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
-      <path d="M28 6.5l.5 5.4-5.4.5" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
@@ -135,14 +121,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         }`}
       >
         {/* Logo */}
-        <div className="flex h-16 items-center gap-2.5 border-b border-white/50 px-5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-900 text-white">
-            <LoopLogo size={16} />
-          </div>
-          <div>
-            <div className="text-sm font-semibold text-gray-900 tracking-tight">Anilla</div>
-            <div className="text-xs text-gray-400">Clinic Scheduling</div>
-          </div>
+        <div className="flex h-16 items-center border-b border-white/50 px-4">
+          <img src={logoImg} alt="Anilla" className="h-10 w-auto object-contain" />
         </div>
 
         {/* Navigation */}

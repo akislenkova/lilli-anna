@@ -1,23 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-
-// ─── Logo mark ────────────────────────────────────────────────────────────────
-function LoopLogo({ size = 20, className = "" }: { size?: number; className?: string }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 36 36"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-    >
-      <path d="M31 18a13 13 0 1 1-2.6-7.9" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
-      <path d="M28 6.5l.5 5.4-5.4.5" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
+import logoImg from "../assets/logo.png";
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 function EnvelopeIcon() {
@@ -94,8 +78,8 @@ function FlowDiagram() {
 
         {/* Center AI */}
         <div className="flex flex-col items-center gap-1.5">
-          <div className="rounded-full border border-blue-300/30 bg-blue-400/20 p-3">
-            <LoopLogo size={20} className="text-blue-200" />
+          <div className="rounded-full border border-blue-300/30 bg-white/20 p-2">
+            <img src={logoImg} alt="Anilla" className="h-9 w-9 object-contain" />
           </div>
           <span className="text-[9px] font-bold uppercase tracking-widest text-blue-200">AI</span>
         </div>
@@ -192,11 +176,8 @@ export function LoginPage() {
         }}
       >
         {/* Logo */}
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white">
-            <LoopLogo size={22} />
-          </div>
-          <span className="text-xl font-semibold tracking-tight text-white">Anilla</span>
+        <div>
+          <img src={logoImg} alt="Anilla" className="h-14 w-auto object-contain brightness-0 invert" />
         </div>
 
         {/* Flow illustration */}
@@ -234,11 +215,8 @@ export function LoginPage() {
       {/* ── Right panel ────────────────────────────────────────────────────── */}
       <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 py-12">
         {/* Mobile logo */}
-        <div className="mb-8 flex items-center gap-2.5 lg:hidden">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-900 text-white">
-            <LoopLogo size={18} />
-          </div>
-          <span className="text-xl font-semibold tracking-tight text-gray-900">Anilla</span>
+        <div className="mb-8 lg:hidden">
+          <img src={logoImg} alt="Anilla" className="h-14 w-auto object-contain" />
         </div>
 
         {/* Form card */}
