@@ -149,14 +149,44 @@ export function LoginPage() {
 
   return (
     <div
-      className="flex min-h-screen"
+      className="relative flex min-h-screen overflow-hidden"
       style={{
         background: "linear-gradient(160deg, #eaf6fb 0%, #d8eef7 50%, #cce8f4 100%)",
       }}
     >
+      {/* ── Decorative wave layers + circles ──────────────────────────────── */}
+      <svg
+        className="pointer-events-none absolute inset-0 h-full w-full"
+        viewBox="0 0 1440 900"
+        preserveAspectRatio="xMidYMid slice"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        {/* Wave 1 — back layer */}
+        <path
+          d="M-100 600 C200 480, 500 700, 800 520 S1200 300, 1540 460 L1540 900 L-100 900 Z"
+          fill="#c2e2f0"
+          fillOpacity="0.55"
+        />
+        {/* Wave 2 — front layer */}
+        <path
+          d="M-100 680 C150 560, 420 760, 720 600 S1100 400, 1540 560 L1540 900 L-100 900 Z"
+          fill="#b8dced"
+          fillOpacity="0.45"
+        />
+        {/* Top-right wave arc */}
+        <path
+          d="M900 -60 C1050 80, 1300 100, 1540 200 L1540 -60 Z"
+          fill="#c8e8f4"
+          fillOpacity="0.5"
+        />
+        {/* White circles */}
+        <circle cx="855" cy="72"  r="52" fill="white" fillOpacity="0.9" />
+        <circle cx="112" cy="450" r="62" fill="white" fillOpacity="0.9" />
+        <circle cx="1160" cy="700" r="52" fill="white" fillOpacity="0.9" />
+      </svg>
       {/* ── Left panel ─────────────────────────────────────────────────────── */}
       <div
-        className="hidden flex-col justify-between p-12 lg:flex lg:w-1/2"
+        className="relative z-10 hidden flex-col justify-between p-12 lg:flex lg:w-1/2"
         style={{
           background: "linear-gradient(155deg, #1a3a6e 0%, #0f2657 50%, #091d45 100%)",
         }}
@@ -202,7 +232,7 @@ export function LoginPage() {
       </div>
 
       {/* ── Right panel ────────────────────────────────────────────────────── */}
-      <div className="flex flex-1 flex-col items-center justify-center px-6 py-12">
+      <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 py-12">
         {/* Mobile logo */}
         <div className="mb-8 flex items-center gap-2.5 lg:hidden">
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-900 text-white">
