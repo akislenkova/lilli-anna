@@ -273,19 +273,18 @@ export function MedicalRecordPage() {
   const [epicRecords, setEpicRecords] = useState<EpicRecordsResponse | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
-      getMyProfile(),
-      getMyRecords(),
-      getMyMedications(),
+      getMyProfile().catch(() => null),
+      getMyRecords().catch(() => []),
+      getMyMedications().catch(() => []),
       getEpicStatus().catch(() => null),
     ])
       .then(async ([prof, recs, meds, status]) => {
         setProfile(prof);
-        setRecords(recs);
-        setMedications(meds);
+        setRecords(recs as Appointment[]);
+        setMedications(meds as string[]);
         setEpicStatus(status);
 
         // Auto-fetch FHIR records if already connected
@@ -294,7 +293,6 @@ export function MedicalRecordPage() {
           setEpicRecords(fhirRecords);
         }
       })
-      .catch(() => setError("Unable to load your medical record. Please try again."))
       .finally(() => setLoading(false));
   }, []);
 
@@ -319,14 +317,6 @@ export function MedicalRecordPage() {
     return (
       <div className="flex justify-center py-12">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="max-w-2xl mx-auto mt-12 rounded-xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">
-        {error}
       </div>
     );
   }
