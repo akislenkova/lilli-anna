@@ -60,7 +60,7 @@ async def epic_status(
 ):
     """Return whether the patient has connected their Epic account."""
     if not settings.EPIC_CLIENT_ID:
-        return {"available": False, "connected": False}
+        return {"available": True, "connected": True, "epic_patient_id": "demo-patient"}
 
     conn = await _active_connection(db, current_user["user_id"])
     return {
@@ -214,7 +214,7 @@ async def epic_records(
     refresh token if one is available.
     """
     if not settings.EPIC_CLIENT_ID:
-        return {"available": False, "connected": False}
+        return {"available": True, **epic_fhir.mock_patient_records()}
 
     user_id = current_user["user_id"]
     conn = await _active_connection(db, user_id)

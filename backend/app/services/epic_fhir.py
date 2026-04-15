@@ -157,6 +157,92 @@ def _coding_display(cc: dict | None) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Demo / mock data (used when EPIC_CLIENT_ID is not configured)
+# ---------------------------------------------------------------------------
+
+def mock_patient_records() -> dict[str, Any]:
+    """Return a realistic but synthetic FHIR summary for demo purposes.
+
+    Called automatically when EPIC_CLIENT_ID is not set so the UI can show
+    a fully populated Medical Records page without a live Epic sandbox.
+    The patient matches the seeded demo account (Alex Rivera).
+    """
+    return {
+        "connected": True,
+        "patient": {
+            "name": "Alex Rivera",
+            "birth_date": "1987-03-14",
+            "gender": "female",
+        },
+        "conditions": [
+            {
+                "id": "demo-cond-1",
+                "code_display": "Essential hypertension",
+                "clinical_status": "active",
+                "onset_date": "2019-06-01",
+            },
+            {
+                "id": "demo-cond-2",
+                "code_display": "Type 2 diabetes mellitus",
+                "clinical_status": "active",
+                "onset_date": "2021-11-15",
+            },
+            {
+                "id": "demo-cond-3",
+                "code_display": "Seasonal allergic rhinitis",
+                "clinical_status": "active",
+                "onset_date": "2015-04-20",
+            },
+        ],
+        "medications": [
+            {
+                "id": "demo-med-1",
+                "medication_display": "Lisinopril 10 mg oral tablet",
+                "status": "active",
+                "dosage": "Take 1 tablet by mouth once daily",
+                "authored_on": "2022-01-10",
+            },
+            {
+                "id": "demo-med-2",
+                "medication_display": "Metformin 500 mg oral tablet",
+                "status": "active",
+                "dosage": "Take 1 tablet by mouth twice daily with meals",
+                "authored_on": "2021-11-20",
+            },
+        ],
+        "allergies": [
+            {
+                "id": "demo-allergy-1",
+                "substance_display": "Penicillin",
+                "criticality": "high",
+                "reaction": "Anaphylaxis",
+            },
+        ],
+        "observations": [
+            {
+                "id": "demo-obs-1",
+                "code_display": "Blood pressure",
+                "value": "128 / 82 mmHg",
+                "effective_date": "2026-03-10",
+            },
+            {
+                "id": "demo-obs-2",
+                "code_display": "Body weight",
+                "value": "68 kg",
+                "effective_date": "2026-03-10",
+            },
+            {
+                "id": "demo-obs-3",
+                "code_display": "Hemoglobin A1c",
+                "value": "7.1 %",
+                "effective_date": "2026-02-28",
+            },
+        ],
+        "last_synced": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+# ---------------------------------------------------------------------------
 # FHIR resource fetchers
 # ---------------------------------------------------------------------------
 
