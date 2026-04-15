@@ -12,11 +12,13 @@ Demo accounts
 """
 
 import logging
+from datetime import date
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import Role, hash_password
+from app.models.patient import PatientProfile
 from app.models.user import User
 
 logger = logging.getLogger(__name__)
@@ -78,6 +80,32 @@ async def seed_demo_data(session: AsyncSession) -> None:
         logger.info("Demo accounts created: %s", ", ".join(created))
     else:
         logger.info("All demo accounts already exist — skipping seed.")
+
+    # Ensure the demo patient has a PatientProfile (required by /patients/me/profile)
+    patient_row = await session.execute(
+        select(User).where(User.email == "patient@demo.com")
+    )
+    patient_user = patient_row.scalar_one_or_none()
+
+    physician_row = await session.execute(
+        select(User).where(User.email == "physician@demo.com")
+    )
+    physician_user = physician_row.scalar_one_or_none()
+
+    if patient_user:
+        existing_profile = await session.execute(
+            select(PatientProfile).where(PatientProfile.user_id == patient_user.id)
+        )
+        if existing_profile.scalar_one_or_none() is None:
+            profile = PatientProfile(
+                user_id=patient_user.id,
+                date_of_birth=date(1987, 3, 14),
+                primary_physician_id=physician_user.id if physician_user else None,
+                language_preference="en",
+            )
+            session.add(profile)
+            await session.commit()
+            logger.info("Demo PatientProfile created for %s", patient_user.email)
 
     logger.info(
         "Demo accounts created (password: %s):\n"
