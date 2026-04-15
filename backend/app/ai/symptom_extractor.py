@@ -81,6 +81,9 @@ _COLLOQUIAL_MAP: list[tuple[list[str], str]] = [
     # Dermatological
     (["rash", "skin rash", "itchy skin", "hives", "breaking out", "skin irritation", "skin bumps", "red patches", "skin lesion"], "skin_rash"),
 
+    # Extremities
+    (["foot hurts", "foot pain", "sore foot", "foot is sore", "my foot", "feet hurt", "feet are sore", "foot ache", "foot aches", "pain in my foot", "pain in my feet", "bottom of my foot", "heel pain", "toe pain", "foot is swollen", "foot swelling"], "foot_pain"),
+
     # Urological
     (["hurts to pee", "burning when i pee", "peeing a lot", "frequent urination", "blood in urine", "uti", "bladder issues", "urinary problems", "trouble peeing"], "urinary_issues"),
 

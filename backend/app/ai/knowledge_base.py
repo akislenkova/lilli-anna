@@ -293,6 +293,14 @@ SYMPTOM_CONDITION_MAP: dict[str, list[tuple[str, float]]] = {
         ("von_willebrand_disease", 0.05),
         ("leukemia", 0.03),
     ],
+    "foot_pain": [
+        ("plantar_fasciitis", 0.25),
+        ("diabetic_neuropathy", 0.20),
+        ("peripheral_arterial_disease", 0.15),
+        ("gout", 0.15),
+        ("osteoarthritis", 0.12),
+        ("stress_fracture", 0.08),
+    ],
 }
 
 
@@ -502,6 +510,25 @@ CONDITION_QUESTIONS: dict[str, list[dict]] = {
         {"id": "ddd_chronic", "text": "Has the pain been ongoing for months or years rather than a recent onset?", "question_type": "yes_no", "weight": 0.8},
         {"id": "ddd_worse_morning", "text": "Is the pain worse in the morning or after periods of inactivity?", "question_type": "yes_no", "weight": 0.6},
         {"id": "ddd_age", "text": "Have you been told that age-related changes to your spine are a factor?", "question_type": "yes_no", "weight": 0.5},
+    ],
+    "peripheral_arterial_disease": [
+        {"id": "pad_diabetes", "text": "Do you have diabetes or a history of high blood sugar?", "question_type": "yes_no", "weight": 0.95},
+        {"id": "pad_claudication", "text": "Does the pain or cramping in your foot or leg come on when you walk and ease when you rest?", "question_type": "yes_no", "weight": 0.90},
+        {"id": "pad_cold", "text": "Does your foot feel cold or look pale or bluish compared to the other one?", "question_type": "yes_no", "weight": 0.85},
+        {"id": "pad_wound", "text": "Do you have any sores, ulcers, or wounds on your foot or lower leg that are slow to heal?", "question_type": "yes_no", "weight": 0.90},
+        {"id": "pad_smoking", "text": "Do you smoke or have you smoked in the past?", "question_type": "yes_no", "weight": 0.60},
+    ],
+    "diabetic_neuropathy": [
+        {"id": "dn_diabetes_known", "text": "Have you been diagnosed with diabetes?", "question_type": "yes_no", "weight": 0.95},
+        {"id": "dn_burning", "text": "Do you feel a burning, shooting, or electric-shock pain in your feet?", "question_type": "yes_no", "weight": 0.85},
+        {"id": "dn_numbness", "text": "Do you have numbness or reduced sensation in your feet — for example, difficulty feeling temperature or touch?", "question_type": "yes_no", "weight": 0.85},
+        {"id": "dn_worse_night", "text": "Is the pain or discomfort worse at night?", "question_type": "yes_no", "weight": 0.70},
+        {"id": "dn_a1c", "text": "How well has your blood sugar been controlled recently — do you know your last A1C?", "question_type": "short_answer", "weight": 0.65},
+    ],
+    "plantar_fasciitis": [
+        {"id": "pf_heel", "text": "Is the pain mainly in your heel, especially the bottom of your foot?", "question_type": "yes_no", "weight": 0.85},
+        {"id": "pf_morning", "text": "Is it worst when you take your first steps in the morning or after sitting for a while?", "question_type": "yes_no", "weight": 0.85},
+        {"id": "pf_standing", "text": "Does prolonged standing or walking make it worse?", "question_type": "yes_no", "weight": 0.70},
     ],
 }
 
@@ -836,6 +863,27 @@ RED_FLAG_PATTERNS: list[dict] = [
         ],
         "severity": "high",
         "action": "Recommend same-day evaluation. Advise against massaging the area.",
+    },
+    {
+        "id": "rf_diabetic_foot_vascular",
+        "name": "Foot pain in diabetic patient — possible peripheral vascular involvement",
+        # Foot pain in a patient with diabetes raises the possibility of peripheral
+        # arterial disease or neuropathic ulceration, both of which require prompt
+        # evaluation to prevent limb-threatening complications.
+        "symptoms": ["foot_pain"],
+        "additional_indicators": [
+            "diabetes", "diabetic", "type 2 diabetes", "type 1 diabetes",
+            "blood sugar", "high blood sugar", "insulin", "metformin",
+            "glucophage", "a1c", "hba1c",
+            # Also fire if the patient's chronic conditions context string is injected
+            "essential hypertension",  # commonly co-occurs with T2DM
+        ],
+        "severity": "high",
+        "action": (
+            "Recommend prompt evaluation. Foot pain in a diabetic patient may indicate "
+            "peripheral arterial disease or neuropathic complications — both require "
+            "early assessment to prevent ulceration or limb loss. Consider 45-minute slot."
+        ),
     },
     {
         "id": "rf_retinal_detachment",

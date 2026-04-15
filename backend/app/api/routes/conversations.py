@@ -13,6 +13,7 @@ from sqlalchemy.orm import selectinload
 
 from app.ai.question_engine import QuestionEngine, SessionContext
 from app.ai.symptom_extractor import SymptomExtractor
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import Role, decrypt_phi, encrypt_phi, get_current_user, require_role
 from app.models.ai_report import RedFlagAlert, RedFlagSeverity
@@ -362,6 +363,29 @@ async def start_conversation(
     db.add(opening_msg)
     await db.flush()
 
+    # Seed chronic conditions into ai_context so the question engine and red-flag
+    # checker can cross-reference the patient's medical history during intake.
+    chronic_conditions: list[str] = []
+    if not settings.EPIC_CLIENT_ID:
+        # Demo / sandbox mode — use the mock FHIR chart
+        from app.services.epic_fhir import mock_patient_records
+        chronic_conditions = [c["code_display"] for c in mock_patient_records()["conditions"]]
+    else:
+        # Production: load from encrypted PatientProfile if available
+        from app.models.patient import PatientProfile
+        prof_result = await db.execute(
+            select(PatientProfile).where(PatientProfile.user_id == patient_id)
+        )
+        prof = prof_result.scalar_one_or_none()
+        if prof and prof.chronic_conditions:
+            try:
+                chronic_conditions = json.loads(decrypt_phi(prof.chronic_conditions))
+            except Exception:
+                logger.warning("Failed to decrypt chronic_conditions for patient %s", patient_id)
+
+    if chronic_conditions:
+        session.ai_context = {"patient_chronic_conditions": chronic_conditions}
+
     try:
         await _audit_log(
             db,
@@ -431,6 +455,7 @@ async def submit_answer(
     asked_question_ids: list[str] = list(ctx_data.get("asked_question_ids", []))
     all_answers: dict = dict(ctx_data.get("answers", {}))
     last_question_id: str | None = ctx_data.get("last_question_id")
+    chronic_conditions: list[str] = ctx_data.get("patient_chronic_conditions", [])
 
     # Associate this answer with the last asked question ID
     if last_question_id:
@@ -442,8 +467,12 @@ async def submit_answer(
         if sym.symptom_name not in all_symptoms:
             all_symptoms.append(sym.symptom_name)
 
-    # Red-flag check — only flag newly found patterns
-    flags = _engine.check_red_flags(all_symptoms, all_answers)
+    # Red-flag check — inject chronic conditions as context so history-aware
+    # patterns (e.g. diabetic foot vascular) can fire correctly
+    enriched_answers = dict(all_answers)
+    if chronic_conditions:
+        enriched_answers["__chronic_conditions__"] = " ".join(chronic_conditions).lower()
+    flags = _engine.check_red_flags(all_symptoms, enriched_answers)
     if flags:
         existing_flag_descs: set[str] = set()
         if session.appointment_id:
@@ -483,6 +512,7 @@ async def submit_answer(
         extracted_symptoms=all_symptoms,
         previous_questions=asked_question_ids,
         previous_answers=all_answers,
+        patient_medical_history={"chronic_conditions": chronic_conditions},
         total_questions_asked=session.questions_asked_count,
     )
     next_q = _engine.select_next_question(qctx)
@@ -519,12 +549,13 @@ async def submit_answer(
         else:
             ai_question_text = follow_up
 
-    # Save updated AI context
+    # Save updated AI context (preserve chronic conditions across turns)
     session.ai_context = {
         "extracted_symptoms": all_symptoms,
         "asked_question_ids": asked_question_ids,
         "answers": all_answers,
         "last_question_id": new_last_question_id,
+        "patient_chronic_conditions": chronic_conditions,
     }
 
     ai_msg = ConversationMessageModel(
