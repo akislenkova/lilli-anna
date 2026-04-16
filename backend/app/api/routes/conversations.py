@@ -384,7 +384,26 @@ async def start_conversation(
                 logger.warning("Failed to decrypt chronic_conditions for patient %s", patient_id)
 
     if chronic_conditions:
-        session.ai_context = {"patient_chronic_conditions": chronic_conditions}
+        # Pre-answer questions that are already resolved by the patient's FHIR
+        # medical history so the question engine never asks "do you have
+        # diabetes?" when we already know they do from their EHR record.
+        pre_answers: dict = {}
+        pre_asked: list[str] = []
+        for cond in chronic_conditions:
+            cond_lower = cond.lower()
+            if "diabetes" in cond_lower:
+                for qid in ("dn_diabetes_known", "pad_diabetes", "dm_history"):
+                    pre_answers[qid] = "yes"
+                    pre_asked.append(qid)
+            if "hypertension" in cond_lower:
+                for qid in ("ht_known",):
+                    pre_answers[qid] = "yes"
+                    pre_asked.append(qid)
+        session.ai_context = {
+            "patient_chronic_conditions": chronic_conditions,
+            "answers": pre_answers,
+            "asked_question_ids": pre_asked,
+        }
 
     try:
         await _audit_log(
@@ -461,11 +480,17 @@ async def submit_answer(
     if last_question_id:
         all_answers[last_question_id] = payload.answer_text
 
-    # Extract symptoms from the new answer and accumulate
-    new_symptoms = _extractor.extract(payload.answer_text)
-    for sym in new_symptoms:
-        if sym.symptom_name not in all_symptoms:
-            all_symptoms.append(sym.symptom_name)
+    # Extract symptoms only from the initial complaint (first answer).
+    # Follow-up yes/no answers can contain incidental words ("yes, I have some
+    # numbness") that the extractor would misread as new chief complaints and
+    # open unrelated condition branches (e.g. wrist/carpal-tunnel from "numbness"
+    # in a foot-pain session).
+    new_symptoms = []
+    if session.questions_asked_count <= 1:
+        new_symptoms = _extractor.extract(payload.answer_text)
+        for sym in new_symptoms:
+            if sym.symptom_name not in all_symptoms:
+                all_symptoms.append(sym.symptom_name)
 
     # Red-flag check — inject chronic conditions as context so history-aware
     # patterns (e.g. diabetic foot vascular) can fire correctly
