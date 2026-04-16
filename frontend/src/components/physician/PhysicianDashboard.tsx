@@ -71,8 +71,8 @@ export function PhysicianDashboard() {
           }
         )
       );
-    } catch {
-      // silently ignore — flag will still show until refresh
+    } catch (err) {
+      console.error("Failed to acknowledge red flag:", err);
     }
   };
   const needsFeedback = appointments.filter((a) => a.status === "completed" && !a.feedback_submitted);

@@ -55,7 +55,7 @@ class RedFlagAlertResponse(BaseModel):
 
     id: UUID
     trigger_description: str
-    severity: str = Field(..., pattern=r"^(low|medium|high|critical)$")
+    severity: str = Field(..., pattern=r"^(elevated|urgent|emergency)$")
     session_completed: bool
     acknowledged: bool
     created_at: datetime
