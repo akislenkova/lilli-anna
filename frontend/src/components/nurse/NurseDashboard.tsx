@@ -113,7 +113,9 @@ export function NurseDashboard() {
       <h1 className="text-2xl font-bold text-gray-900">Nursing Overview</h1>
 
       {redFlagAppts.length > 0 && (
-        <RedFlagBanner flags={redFlagAppts.flatMap((a) => a.red_flags ?? [])} />
+        <RedFlagBanner flags={redFlagAppts.flatMap((a) =>
+          (a.red_flags ?? []).map((f) => ({ ...f, appointment_id: a.id, patient_name: a.patient_name ?? undefined }))
+        )} />
       )}
 
       {/* Stat cards */}

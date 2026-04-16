@@ -59,7 +59,9 @@ export function PhysicianDashboard() {
     (a) => a.scheduled_start && new Date(a.scheduled_start) >= todayStart && new Date(a.scheduled_start) < todayEnd
   );
   const unacknowledgedFlags = appointments.flatMap((a) =>
-    (a.red_flags ?? []).filter((f) => !f.acknowledged)
+    (a.red_flags ?? [])
+      .filter((f) => !f.acknowledged)
+      .map((f) => ({ ...f, appointment_id: a.id, patient_name: a.patient_name ?? undefined }))
   );
   const redFlagAppts = appointments.filter((a) =>
     (a.red_flags ?? []).some((f) => !f.acknowledged)

@@ -1,8 +1,14 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import type { RedFlagAlert } from "../../types";
 
+export interface RedFlagAlertWithContext extends RedFlagAlert {
+  appointment_id?: string;
+  patient_name?: string;
+}
+
 interface Props {
-  flags: RedFlagAlert[];
+  flags: RedFlagAlertWithContext[];
   onAcknowledge?: (flagId: string) => void;
   compact?: boolean;
 }
@@ -52,13 +58,25 @@ export function RedFlagBanner({ flags, onAcknowledge, compact }: Props) {
               <span className="rounded-full bg-white/60 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide">
                 {flag.severity}
               </span>
-              {!compact && (
+              {!compact && flag.patient_name && (
+                <span className="text-sm font-semibold">{flag.patient_name}</span>
+              )}
+              {!compact && !flag.patient_name && (
                 <span className="text-sm font-semibold">Red Flag Alert</span>
               )}
             </div>
-            <p className={`mt-1 text-sm ${compact ? "line-clamp-1" : ""}`}>
-              {flag.trigger_description}
-            </p>
+            {flag.appointment_id ? (
+              <Link
+                to={`/appointments/${flag.appointment_id}`}
+                className={`mt-1 block text-sm underline underline-offset-2 hover:opacity-75 ${compact ? "line-clamp-1" : ""}`}
+              >
+                {flag.trigger_description}
+              </Link>
+            ) : (
+              <p className={`mt-1 text-sm ${compact ? "line-clamp-1" : ""}`}>
+                {flag.trigger_description}
+              </p>
+            )}
           </div>
           {onAcknowledge && (
             <button
