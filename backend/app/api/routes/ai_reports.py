@@ -211,8 +211,8 @@ async def get_red_flags(
 
     result = await db.execute(
         text(
-            "SELECT id, trigger_description, severity, session_completed, "
-            "acknowledged, created_at "
+            "SELECT id, trigger_description, severity, session_was_completed, "
+            "acknowledged_at, created_at "
             "FROM red_flag_alerts WHERE appointment_id = :appt_id "
             "ORDER BY created_at DESC"
         ),
@@ -237,8 +237,8 @@ async def get_red_flags(
             id=f["id"],
             trigger_description=f["trigger_description"],
             severity=f["severity"],
-            session_completed=f["session_completed"],
-            acknowledged=f["acknowledged"],
+            session_completed=f["session_was_completed"],
+            acknowledged=f["acknowledged_at"] is not None,
             created_at=f["created_at"],
         )
         for f in flags
@@ -266,8 +266,8 @@ async def acknowledge_red_flag(
     # Fetch the flag
     result = await db.execute(
         text(
-            "SELECT id, trigger_description, severity, session_completed, "
-            "acknowledged, created_at "
+            "SELECT id, trigger_description, severity, session_was_completed, "
+            "acknowledged_at, created_at "
             "FROM red_flag_alerts WHERE id = :flag_id AND appointment_id = :appt_id"
         ),
         {"flag_id": str(flag_id), "appt_id": str(appointment_id)},
@@ -280,7 +280,7 @@ async def acknowledge_red_flag(
             detail="Red flag alert not found",
         )
 
-    if flag["acknowledged"]:
+    if flag["acknowledged_at"] is not None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Red flag is already acknowledged",
@@ -289,7 +289,7 @@ async def acknowledge_red_flag(
     # Update the flag
     await db.execute(
         text(
-            "UPDATE red_flag_alerts SET acknowledged = true, acknowledged_by = :user_id, "
+            "UPDATE red_flag_alerts SET acknowledged_by = :user_id, "
             "acknowledged_at = :now WHERE id = :flag_id"
         ),
         {
@@ -298,6 +298,7 @@ async def acknowledge_red_flag(
             "flag_id": str(flag_id),
         },
     )
+    await db.commit()
 
     try:
         await _audit_log(
@@ -315,7 +316,7 @@ async def acknowledge_red_flag(
         id=flag["id"],
         trigger_description=flag["trigger_description"],
         severity=flag["severity"],
-        session_completed=flag["session_completed"],
+        session_completed=flag["session_was_completed"],
         acknowledged=True,
         created_at=flag["created_at"],
     )

@@ -497,7 +497,7 @@ async def get_priority_ranking(
         red_flag_result = await db.execute(
             text(
                 "SELECT severity FROM red_flag_alerts "
-                "WHERE appointment_id = :appt_id AND acknowledged = false"
+                "WHERE appointment_id = :appt_id AND acknowledged_at IS NULL"
             ),
             {"appt_id": str(appt.id)},
         )
