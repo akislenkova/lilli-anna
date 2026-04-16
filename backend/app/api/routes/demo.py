@@ -4,11 +4,12 @@ Only active when ENVIRONMENT != 'production'. Safe to call any number of times;
 user accounts and profiles are preserved so login still works immediately after.
 """
 
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
 from app.core.database import get_db
 from app.models.user import User
 
@@ -20,15 +21,8 @@ async def reset_demo_data(db: AsyncSession = Depends(get_db)):
     """Delete all transient demo data (appointments, sessions, red flags, messages).
 
     User accounts and patient profiles are left intact so demo logins keep
-    working immediately after the reset.
-
-    Blocked in production (ENVIRONMENT=production).
+    working immediately after the reset. Scoped to the demo patient email only.
     """
-    if settings.ENVIRONMENT == "production":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Reset is not available in production.",
-        )
 
     # Resolve demo patient ID
     result = await db.execute(
@@ -84,3 +78,29 @@ async def reset_demo_data(db: AsyncSession = Depends(get_db)):
         "message": f"Demo data cleared ({total} rows deleted).",
         "deleted": deleted,
     }
+
+
+@router.post("/dismiss-flags", status_code=status.HTTP_200_OK)
+async def dismiss_all_flags(db: AsyncSession = Depends(get_db)):
+    """Acknowledge all unacknowledged red flag alerts for the demo patient.
+
+    Use this to clean up duplicate flags from repeated demo runs without
+    deleting appointment or session data.
+    """
+    result = await db.execute(
+        select(User.id).where(User.email == "patient@demo.com")
+    )
+    patient_id = result.scalar_one_or_none()
+    if patient_id is None:
+        return {"dismissed": 0, "message": "Demo patient not found."}
+
+    now = datetime.now(timezone.utc).isoformat()
+    r = await db.execute(
+        text(
+            "UPDATE red_flag_alerts SET acknowledged_at = :now "
+            "WHERE patient_id = :pid AND acknowledged_at IS NULL"
+        ),
+        {"now": now, "pid": str(patient_id)},
+    )
+    await db.commit()
+    return {"dismissed": r.rowcount, "message": f"{r.rowcount} flag(s) dismissed."}

@@ -24,6 +24,19 @@ export function PhysicianDashboard() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const markFlagAcknowledged = (appointmentId: string, flagId: string) => {
+    setAppointments((prev) =>
+      prev.map((a) =>
+        a.id !== appointmentId ? a : {
+          ...a,
+          red_flags: (a.red_flags ?? []).map((f) =>
+            f.id !== flagId ? f : { ...f, acknowledged: true }
+          ),
+        }
+      )
+    );
+  };
+
   useEffect(() => {
     listAppointments({}).then((data) => {
       setAppointments(data);
@@ -46,7 +59,12 @@ export function PhysicianDashboard() {
   const today = appointments.filter(
     (a) => a.scheduled_start && new Date(a.scheduled_start) >= todayStart && new Date(a.scheduled_start) < todayEnd
   );
-  const redFlagAppts = appointments.filter((a) => a.red_flags && a.red_flags.length > 0);
+  const unacknowledgedFlags = appointments.flatMap((a) =>
+    (a.red_flags ?? []).filter((f) => !f.acknowledged)
+  );
+  const redFlagAppts = appointments.filter((a) =>
+    (a.red_flags ?? []).some((f) => !f.acknowledged)
+  );
 
   // Build a flag-id → appointment-id lookup so we can acknowledge without
   // needing the appointment id at the banner level.
@@ -58,23 +76,27 @@ export function PhysicianDashboard() {
   const handleAcknowledge = async (flagId: string) => {
     const apptId = flagApptMap[flagId];
     if (!apptId) return;
+    // Optimistically update UI first so it feels instant
+    markFlagAcknowledged(apptId, flagId);
+    acknowledgeRedFlag(apptId, flagId).catch((err) => {
+      console.error("Acknowledge synced locally but backend call failed:", err);
+    });
+  };
+
+  const handleDismissAll = async () => {
     try {
-      await acknowledgeRedFlag(apptId, flagId);
-      // Optimistically mark acknowledged in local state
+      await api.post("/demo/dismiss-flags");
       setAppointments((prev) =>
-        prev.map((a) =>
-          a.id !== apptId ? a : {
-            ...a,
-            red_flags: (a.red_flags ?? []).map((f) =>
-              f.id !== flagId ? f : { ...f, acknowledged: true }
-            ),
-          }
-        )
+        prev.map((a) => ({
+          ...a,
+          red_flags: (a.red_flags ?? []).map((f) => ({ ...f, acknowledged: true })),
+        }))
       );
     } catch (err) {
-      console.error("Failed to acknowledge red flag:", err);
+      console.error("Dismiss all failed:", err);
     }
   };
+
   const needsFeedback = appointments.filter((a) => a.status === "completed" && !a.feedback_submitted);
   const pendingIntake = appointments.filter((a) => a.status === "intake_complete");
   const newRequests = appointments.filter((a) => a.status === "pending_intake");
@@ -83,15 +105,27 @@ export function PhysicianDashboard() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
 
-      {redFlagAppts.length > 0 && (
-        <RedFlagBanner flags={redFlagAppts.flatMap((a) => a.red_flags ?? [])} onAcknowledge={handleAcknowledge} />
+      {unacknowledgedFlags.length > 0 && (
+        <div>
+          <RedFlagBanner flags={unacknowledgedFlags} onAcknowledge={handleAcknowledge} />
+          {unacknowledgedFlags.length > 1 && (
+            <div className="mt-1 flex justify-end">
+              <button
+                onClick={handleDismissAll}
+                className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                Dismiss all
+              </button>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Stats row */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <StatCard label="Today" value={today.length} sub="appointments" color="bg-primary-50 text-primary-900" />
         <StatCard label="Needs Review" value={pendingIntake.length} sub="intake complete" color="bg-emerald-50 text-emerald-900" to="/appointments?filter=intake_complete" />
-        <StatCard label="Red Flags" value={redFlagAppts.length} sub="require attention" color={redFlagAppts.length > 0 ? "bg-red-50 text-red-900" : "bg-gray-50 text-gray-700"} />
+        <StatCard label="Red Flags" value={unacknowledgedFlags.length} sub="require attention" color={unacknowledgedFlags.length > 0 ? "bg-red-50 text-red-900" : "bg-gray-50 text-gray-700"} />
         <StatCard label="Feedback Due" value={needsFeedback.length} sub="completed visits" color={needsFeedback.length > 0 ? "bg-amber-50 text-amber-900" : "bg-gray-50 text-gray-700"} />
       </div>
 
