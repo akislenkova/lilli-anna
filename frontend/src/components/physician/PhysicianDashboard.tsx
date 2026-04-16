@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { listAppointments } from "../../services/appointments";
+import { acknowledgeRedFlag } from "../../services/reports";
 import { RedFlagBanner } from "../common/RedFlagBanner";
 import type { Appointment } from "../../types";
 
@@ -45,6 +46,34 @@ export function PhysicianDashboard() {
     (a) => a.scheduled_start && new Date(a.scheduled_start) >= todayStart && new Date(a.scheduled_start) < todayEnd
   );
   const redFlagAppts = appointments.filter((a) => a.red_flags && a.red_flags.length > 0);
+
+  // Build a flag-id → appointment-id lookup so we can acknowledge without
+  // needing the appointment id at the banner level.
+  const flagApptMap: Record<string, string> = {};
+  redFlagAppts.forEach((a) => {
+    (a.red_flags ?? []).forEach((f) => { flagApptMap[f.id] = a.id; });
+  });
+
+  const handleAcknowledge = async (flagId: string) => {
+    const apptId = flagApptMap[flagId];
+    if (!apptId) return;
+    try {
+      await acknowledgeRedFlag(apptId, flagId);
+      // Optimistically mark acknowledged in local state
+      setAppointments((prev) =>
+        prev.map((a) =>
+          a.id !== apptId ? a : {
+            ...a,
+            red_flags: (a.red_flags ?? []).map((f) =>
+              f.id !== flagId ? f : { ...f, acknowledged: true }
+            ),
+          }
+        )
+      );
+    } catch {
+      // silently ignore — flag will still show until refresh
+    }
+  };
   const needsFeedback = appointments.filter((a) => a.status === "completed" && !a.feedback_submitted);
   const pendingIntake = appointments.filter((a) => a.status === "intake_complete");
   const newRequests = appointments.filter((a) => a.status === "pending_intake");
@@ -54,7 +83,7 @@ export function PhysicianDashboard() {
       <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
 
       {redFlagAppts.length > 0 && (
-        <RedFlagBanner flags={redFlagAppts.flatMap((a) => a.red_flags ?? [])} />
+        <RedFlagBanner flags={redFlagAppts.flatMap((a) => a.red_flags ?? [])} onAcknowledge={handleAcknowledge} />
       )}
 
       {/* Stats row */}
