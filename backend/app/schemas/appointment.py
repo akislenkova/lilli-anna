@@ -28,6 +28,17 @@ class AppointmentUpdate(BaseModel):
     scheduler_override_reason: Optional[str] = Field(default=None, max_length=1000)
 
 
+class RedFlagAlertResponse(BaseModel):
+    """Serialised red-flag alert attached to an appointment."""
+
+    id: UUID
+    trigger_description: str
+    severity: str
+    acknowledged: bool
+    session_completed: bool
+    created_at: Optional[datetime] = None
+
+
 class AppointmentResponse(BaseModel):
     """Full appointment data for authorized roles."""
 
@@ -51,6 +62,7 @@ class AppointmentResponse(BaseModel):
     updated_at: datetime
     patient_name: Optional[str] = None
     initial_reason: Optional[str] = None
+    red_flags: list[RedFlagAlertResponse] = Field(default_factory=list)
 
 
 class AppointmentListResponse(BaseModel):

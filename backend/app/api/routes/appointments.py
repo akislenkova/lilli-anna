@@ -23,6 +23,7 @@ from app.models.appointment import (
     AppointmentVersion,
     VisitType,
 )
+from app.models.ai_report import RedFlagAlert
 from app.models.user import User
 from app.schemas.appointment import (
     AppointmentCreate,
@@ -35,6 +36,7 @@ from app.schemas.appointment import (
     AppointmentVersionResponse,
     PriorityRanking,
     RankedPatient,
+    RedFlagAlertResponse,
     SchedulingConflict,
     SuggestedAlternative,
 )
@@ -224,10 +226,30 @@ async def list_appointments(
         )
         patient_names = {row[0]: row[1] for row in name_result.fetchall()}
 
+    # Batch-fetch red flag alerts for all fetched appointments
+    appt_ids = [a.id for a in appointments]
+    red_flags_by_appt: dict[uuid.UUID, list[RedFlagAlertResponse]] = {a.id: [] for a in appointments}
+    if appt_ids:
+        rf_result = await db.execute(
+            select(RedFlagAlert).where(RedFlagAlert.appointment_id.in_(appt_ids))
+        )
+        for rf in rf_result.scalars().all():
+            red_flags_by_appt.setdefault(rf.appointment_id, []).append(
+                RedFlagAlertResponse(
+                    id=rf.id,
+                    trigger_description=rf.trigger_description,
+                    severity=rf.severity.value,
+                    acknowledged=rf.acknowledged_at is not None,
+                    session_completed=rf.session_was_completed,
+                    created_at=rf.created_at,
+                )
+            )
+
     items = []
     for a in appointments:
         response = AppointmentResponse.model_validate(a)
         response.patient_name = patient_names.get(a.patient_id)
+        response.red_flags = red_flags_by_appt.get(a.id, [])
         items.append(response)
 
     await db.commit()
