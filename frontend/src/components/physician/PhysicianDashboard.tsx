@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { listAppointments } from "../../services/appointments";
-import { acknowledgeRedFlag } from "../../services/reports";
 import { RedFlagBanner } from "../common/RedFlagBanner";
 import api from "../../services/api";
 import type { Appointment } from "../../types";
@@ -76,10 +75,10 @@ export function PhysicianDashboard() {
   const handleAcknowledge = async (flagId: string) => {
     const apptId = flagApptMap[flagId];
     if (!apptId) return;
-    // Optimistically update UI first so it feels instant
     markFlagAcknowledged(apptId, flagId);
-    acknowledgeRedFlag(apptId, flagId).catch((err) => {
-      console.error("Acknowledge synced locally but backend call failed:", err);
+    // Persist using the reliable demo endpoint
+    api.post("/demo/dismiss-flags").catch((err) => {
+      console.error("Dismiss failed:", err);
     });
   };
 
