@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { listAppointments } from "../../services/appointments";
 import { acknowledgeRedFlag } from "../../services/reports";
 import { RedFlagBanner } from "../common/RedFlagBanner";
+import api from "../../services/api";
 import type { Appointment } from "../../types";
 
 function StatCard({ label, value, sub, color, to }: { label: string; value: number | string; sub?: string; color: string; to?: string }) {
@@ -175,6 +176,24 @@ export function PhysicianDashboard() {
           </div>
         </section>
       )}
+
+      {/* Demo reset — clears all appointment/session data for a clean demo run */}
+      <div className="pt-4 border-t border-gray-100 flex justify-end">
+        <button
+          onClick={async () => {
+            if (!confirm("Reset all demo appointment data? This cannot be undone.")) return;
+            try {
+              await api.post("/demo/reset");
+              setAppointments([]);
+            } catch {
+              alert("Reset failed — check console.");
+            }
+          }}
+          className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+        >
+          Reset demo data
+        </button>
+      </div>
     </div>
   );
 }
