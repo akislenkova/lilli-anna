@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import logoImg from "../assets/logo.png";
+import logoWhiteImg from "../assets/logo-white.png";
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 function EnvelopeIcon() {
@@ -79,7 +80,7 @@ function FlowDiagram() {
         {/* Center AI */}
         <div className="flex flex-col items-center gap-1.5">
           <div className="rounded-full border border-blue-300/30 bg-white/20 p-2">
-            <img src={logoImg} alt="Anilla" className="h-9 w-9 object-contain" />
+            <img src={logoWhiteImg} alt="Anilla" className="h-9 w-9 object-contain" />
           </div>
           <span className="text-[9px] font-bold uppercase tracking-widest text-blue-200">AI</span>
         </div>
@@ -177,7 +178,7 @@ export function LoginPage() {
       >
         {/* Logo */}
         <div>
-          <img src={logoImg} alt="Anilla" className="h-14 w-auto object-contain brightness-0 invert" />
+          <img src={logoWhiteImg} alt="Anilla" className="h-14 w-auto object-contain" />
         </div>
 
         {/* Flow illustration */}
