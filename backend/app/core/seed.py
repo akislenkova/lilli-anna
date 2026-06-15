@@ -1,14 +1,17 @@
 """Seed the database with demo accounts on first run.
 
-Only runs when the users table is empty (i.e. fresh database).
-Never runs in production (ENVIRONMENT != "development").
+Development only: creates a patient demo account plus provider accounts so
+the full workflow can be tested locally.
+
+Production: only the patient demo account is seeded (provider accounts must
+be created via the admin interface). Provider credentials are NEVER logged.
 
 Demo accounts
 -------------
-  Patient   : patient@demo.com   / demo1234
-  Physician : physician@demo.com / demo1234  (Internal Medicine)
-  Scheduler : scheduler@demo.com / demo1234
-  Nurse     : nurse@demo.com     / demo1234
+  Patient   : patient@demo.com   / demo1234          (all environments)
+  Physician : physician@demo.com / <set via env>      (non-production only)
+  Scheduler : scheduler@demo.com / <set via env>      (non-production only)
+  Nurse     : nurse@demo.com     / <set via env>      (non-production only)
 """
 
 import logging
@@ -25,12 +28,16 @@ logger = logging.getLogger(__name__)
 
 _DEMO_PASSWORD = "demo1234"
 
-_DEMO_USERS = [
-    {
-        "email": "patient@demo.com",
-        "full_name": "Alex Rivera",
-        "role": Role.PATIENT,
-    },
+# Patient account — safe to seed in all environments (no HIPAA role)
+_PATIENT_ACCOUNT = {
+    "email": "patient@demo.com",
+    "full_name": "Alex Rivera",
+    "role": Role.PATIENT,
+}
+
+# Provider accounts — development / staging only.
+# In production these must be created by an admin; never auto-seeded.
+_PROVIDER_ACCOUNTS = [
     {
         "email": "physician@demo.com",
         "full_name": "Dr. Sarah Chen",
@@ -52,11 +59,24 @@ _DEMO_USERS = [
 
 
 async def seed_demo_data(session: AsyncSession) -> None:
-    """Create demo accounts if they don't already exist."""
+    """Create demo accounts if they don't already exist.
+
+    In production only the patient account is created — provider accounts
+    must be provisioned through the admin interface to comply with HIPAA
+    access-control requirements.  Passwords are never written to logs.
+    """
+    from app.core.config import settings
+
+    is_production = settings.ENVIRONMENT == "production"
+
+    accounts_to_seed = [_PATIENT_ACCOUNT]
+    if not is_production:
+        accounts_to_seed += _PROVIDER_ACCOUNTS
+
     hashed = hash_password(_DEMO_PASSWORD)
 
     created = []
-    for data in _DEMO_USERS:
+    for data in accounts_to_seed:
         existing = await session.execute(
             select(User).where(User.email == data["email"])
         )
@@ -77,9 +97,10 @@ async def seed_demo_data(session: AsyncSession) -> None:
 
     if created:
         await session.commit()
-        logger.info("Demo accounts created: %s", ", ".join(created))
+        # Log which accounts were created but never log the password
+        logger.info("Demo accounts seeded: %s", ", ".join(created))
     else:
-        logger.info("All demo accounts already exist — skipping seed.")
+        logger.info("Demo accounts already exist — skipping seed.")
 
     # Ensure the demo patient has a PatientProfile (required by /patients/me/profile)
     patient_row = await session.execute(
@@ -87,10 +108,12 @@ async def seed_demo_data(session: AsyncSession) -> None:
     )
     patient_user = patient_row.scalar_one_or_none()
 
-    physician_row = await session.execute(
-        select(User).where(User.email == "physician@demo.com")
-    )
-    physician_user = physician_row.scalar_one_or_none()
+    physician_user = None
+    if not is_production:
+        physician_row = await session.execute(
+            select(User).where(User.email == "physician@demo.com")
+        )
+        physician_user = physician_row.scalar_one_or_none()
 
     if patient_user:
         existing_profile = await session.execute(
@@ -105,13 +128,4 @@ async def seed_demo_data(session: AsyncSession) -> None:
             )
             session.add(profile)
             await session.commit()
-            logger.info("Demo PatientProfile created for %s", patient_user.email)
-
-    logger.info(
-        "Demo accounts created (password: %s):\n"
-        "  patient@demo.com   — patient\n"
-        "  physician@demo.com — physician (Internal Medicine)\n"
-        "  scheduler@demo.com — scheduler\n"
-        "  nurse@demo.com     — nurse",
-        _DEMO_PASSWORD,
-    )
+            logger.info("Demo PatientProfile created.")

@@ -24,4 +24,11 @@ frontend/node_modules/
 ml/data/raw/*.csv
 ml/data/raw/*.json
 ml/data/raw/synthea/
+ml/data/raw/*.jar
 ml/output/
+
+# Synthea generator output (synthetic FHIR data, regenerable)
+/output/
+
+# TS build cache
+*.tsbuildinfo

@@ -10,14 +10,27 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.models.user import User
 
 router = APIRouter(prefix="/demo", tags=["demo"])
 
 
+def _require_non_production() -> None:
+    """Raise 404 when called from a production deployment."""
+    if settings.ENVIRONMENT == "production":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Not found",
+        )
+
+
 @router.post("/reset", status_code=status.HTTP_200_OK)
-async def reset_demo_data(db: AsyncSession = Depends(get_db)):
+async def reset_demo_data(
+    _: None = Depends(_require_non_production),
+    db: AsyncSession = Depends(get_db),
+):
     """Delete all transient demo data (appointments, sessions, red flags, messages).
 
     User accounts and patient profiles are left intact so demo logins keep
@@ -81,7 +94,10 @@ async def reset_demo_data(db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/dismiss-flags", status_code=status.HTTP_200_OK)
-async def dismiss_all_flags(db: AsyncSession = Depends(get_db)):
+async def dismiss_all_flags(
+    _: None = Depends(_require_non_production),
+    db: AsyncSession = Depends(get_db),
+):
     """Acknowledge all unacknowledged red flag alerts for the demo patient.
 
     Use this to clean up duplicate flags from repeated demo runs without
