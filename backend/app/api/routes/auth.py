@@ -109,7 +109,7 @@ async def login(request: Request, credentials: LoginRequest, db: AsyncSession = 
     await db.flush()
 
     token = create_access_token(
-        data={"sub": str(user.id), "role": user.role.value, "name": user.full_name, "email": user.email}
+        data={"sub": str(user.id), "role": user.role.value, "name": user.full_name}
     )
 
     try:

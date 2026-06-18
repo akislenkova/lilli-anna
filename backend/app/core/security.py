@@ -116,7 +116,7 @@ async def get_current_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Account is deactivated",
         )
-    return {"user_id": str(user.id), "role": user.role.value, "name": user.full_name}
+    return {"user_id": str(user.id), "role": user.role.value, "name": user.full_name, "email": user.email}
 
 
 def require_role(*roles: Role):
