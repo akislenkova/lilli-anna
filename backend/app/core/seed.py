@@ -148,26 +148,28 @@ async def seed_demo_data(session: AsyncSession) -> None:
         existing_profile2 = await session.execute(
             select(PatientProfile).where(PatientProfile.user_id == patient2_user.id)
         )
-        if existing_profile2.scalar_one_or_none() is None:
+        profile2 = existing_profile2.scalar_one_or_none()
+        if profile2 is None:
             profile2 = PatientProfile(
                 user_id=patient2_user.id,
                 date_of_birth=date(1979, 8, 22),
                 primary_physician_id=physician_user.id if physician_user else None,
                 language_preference="en",
-                medical_history=encrypt_phi(
-                    "Diagnosed with herniated disc at L4-L5 (confirmed MRI 2023). "
-                    "Reports significant pain exacerbation when driving over potholes, "
-                    "speed bumps, or any road obstructions — jarring/vibration greatly "
-                    "worsens lumbar pain. Previously completed 8 weeks of physical "
-                    "therapy with partial improvement. No prior spinal surgery."
-                ),
-                chronic_conditions=encrypt_phi(
-                    json.dumps(["Herniated disc L4-L5", "Lumbar radiculopathy"])
-                ),
-                current_medications=encrypt_phi(
-                    json.dumps(["Ibuprofen 400mg as needed", "Cyclobenzaprine 5mg at night"])
-                ),
             )
             session.add(profile2)
-            await session.commit()
-            logger.info("Demo PatientProfile 2 (Morgan Lee) created.")
+
+        profile2.medical_history = encrypt_phi(
+            "Diagnosed with herniated disc at L4 (confirmed MRI 2023). "
+            "Patient refuses to drive over potholes, speed bumps, or any road "
+            "obstructions — jarring/vibration significantly worsens lumbar pain. "
+            "Previously completed 8 weeks of physical therapy with partial "
+            "improvement. No prior spinal surgery."
+        )
+        profile2.chronic_conditions = encrypt_phi(
+            json.dumps(["Herniated disc L4", "Lumbar radiculopathy"])
+        )
+        profile2.current_medications = encrypt_phi(
+            json.dumps(["Ibuprofen 400mg as needed", "Cyclobenzaprine 5mg at night"])
+        )
+        await session.commit()
+        logger.info("Demo PatientProfile 2 (Morgan Lee) seeded.")
