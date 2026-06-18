@@ -160,6 +160,64 @@ def _coding_display(cc: dict | None) -> str:
 # Demo / mock data (used when EPIC_CLIENT_ID is not configured)
 # ---------------------------------------------------------------------------
 
+def mock_patient_records_morgan() -> dict[str, Any]:
+    """Synthetic FHIR summary for demo patient 2 (Morgan Lee)."""
+    return {
+        "connected": True,
+        "patient": {
+            "name": "Morgan Lee",
+            "birth_date": "1979-08-22",
+            "gender": "female",
+        },
+        "conditions": [
+            {
+                "id": "demo2-cond-1",
+                "code_display": "Herniated disc L4",
+                "clinical_status": "active",
+                "onset_date": "2023-01-15",
+            },
+            {
+                "id": "demo2-cond-2",
+                "code_display": "Lumbar radiculopathy",
+                "clinical_status": "active",
+                "onset_date": "2023-01-15",
+            },
+        ],
+        "medications": [
+            {
+                "id": "demo2-med-1",
+                "medication_display": "Ibuprofen 400 mg oral tablet",
+                "status": "active",
+                "dosage": "Take 1 tablet by mouth as needed for pain",
+                "authored_on": "2023-02-01",
+            },
+            {
+                "id": "demo2-med-2",
+                "medication_display": "Cyclobenzaprine 5 mg oral tablet",
+                "status": "active",
+                "dosage": "Take 1 tablet by mouth at bedtime",
+                "authored_on": "2023-02-01",
+            },
+        ],
+        "allergies": [],
+        "observations": [
+            {
+                "id": "demo2-obs-1",
+                "code_display": "Blood pressure",
+                "value": "118 / 74 mmHg",
+                "effective_date": "2026-03-10",
+            },
+            {
+                "id": "demo2-obs-2",
+                "code_display": "Body weight",
+                "value": "72 kg",
+                "effective_date": "2026-03-10",
+            },
+        ],
+        "last_synced": datetime.now(timezone.utc).isoformat(),
+    }
+
+
 def mock_patient_records() -> dict[str, Any]:
     """Return a realistic but synthetic FHIR summary for demo purposes.
 

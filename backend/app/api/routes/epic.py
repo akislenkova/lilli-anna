@@ -214,7 +214,12 @@ async def epic_records(
     refresh token if one is available.
     """
     if not settings.EPIC_CLIENT_ID:
-        return {"available": True, **epic_fhir.mock_patient_records()}
+        mock = (
+            epic_fhir.mock_patient_records_morgan()
+            if current_user.get("email") == "patient2@demo.com"
+            else epic_fhir.mock_patient_records()
+        )
+        return {"available": True, **mock}
 
     user_id = current_user["user_id"]
     conn = await _active_connection(db, user_id)
